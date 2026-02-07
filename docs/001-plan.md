@@ -238,3 +238,19 @@ When resuming work, do this first:
 5. Finish M3 + M4 UI wiring.
 6. Validate acceptance criteria and keep verifier green.
 
+## 15. Execution Status
+
+Last updated: 2026-02-07
+
+### Milestone Status
+
+- M1 Project scaffold: `In Progress`
+- M2 Storage foundation: `Pending`
+- M3 Capture integration: `Pending`
+- M4 History + detail + delete: `Pending`
+- M5 Fast verifier: `Pending`
+
+### Active Task Log
+
+- [In Progress] M1.1 Create SwiftUI app target and basic navigation.
+- [Pending] M1.2 Add History screen placeholder and `Add` button.
