@@ -1,0 +1,92 @@
+{
+  "skills": [
+    {
+      "name": "app-store-changelog",
+      "repo": "https://github.com/Dimillian/Skills",
+      "path": "app-store-changelog",
+      "commit": "0ce51f2e0db5f240a3067a37bbfb86dae6f45bb7",
+      "checksum": "b992a13990f2006b18ac01a4aba11c8e2ecb01fd3d0e11f07617ef2956ce44db",
+      "license": {
+        "spdx": "MIT",
+        "path": "LICENSE"
+      }
+    },
+    {
+      "name": "ios-debugger-agent",
+      "repo": "https://github.com/Dimillian/Skills",
+      "path": "ios-debugger-agent",
+      "commit": "0ce51f2e0db5f240a3067a37bbfb86dae6f45bb7",
+      "checksum": "10cb4bc0d97b6c19d0da9840e550ce8bddf730f14738ff70ab11887960eca9de",
+      "license": {
+        "spdx": "MIT",
+        "path": "LICENSE"
+      }
+    },
+    {
+      "name": "macos-spm-app-packaging",
+      "repo": "https://github.com/Dimillian/Skills",
+      "path": "macos-spm-app-packaging",
+      "commit": "0ce51f2e0db5f240a3067a37bbfb86dae6f45bb7",
+      "checksum": "a8495b251d4d9ec691fcfadcf9c8bb7d45fa12dfb574f570b7e2bb4d36e84745",
+      "license": {
+        "spdx": "MIT",
+        "path": "LICENSE"
+      }
+    },
+    {
+      "name": "swift-concurrency-expert",
+      "repo": "https://github.com/Dimillian/Skills",
+      "path": "swift-concurrency-expert",
+      "commit": "0ce51f2e0db5f240a3067a37bbfb86dae6f45bb7",
+      "checksum": "b8506cf8db82e2c46b06bdc7ff856600f941325f75e11e41a1c66b20d86f5299",
+      "license": {
+        "spdx": "MIT",
+        "path": "LICENSE"
+      }
+    },
+    {
+      "name": "swiftui-liquid-glass",
+      "repo": "https://github.com/Dimillian/Skills",
+      "path": "swiftui-liquid-glass",
+      "commit": "0ce51f2e0db5f240a3067a37bbfb86dae6f45bb7",
+      "checksum": "ca838bf6d56e46bb48215831f219502af5b960b4bb64bb6256fbdc51284570f8",
+      "license": {
+        "spdx": "MIT",
+        "path": "LICENSE"
+      }
+    },
+    {
+      "name": "swiftui-performance-audit",
+      "repo": "https://github.com/Dimillian/Skills",
+      "path": "swiftui-performance-audit",
+      "commit": "0ce51f2e0db5f240a3067a37bbfb86dae6f45bb7",
+      "checksum": "ad121ceb2bb57935e2823047cc0017013a16c24f14ff696b9a9627c62289e89a",
+      "license": {
+        "spdx": "MIT",
+        "path": "LICENSE"
+      }
+    },
+    {
+      "name": "swiftui-ui-patterns",
+      "repo": "https://github.com/Dimillian/Skills",
+      "path": "swiftui-ui-patterns",
+      "commit": "0ce51f2e0db5f240a3067a37bbfb86dae6f45bb7",
+      "checksum": "3535c468fbd9e6ed06379a1a3be3ed247782a6288bd633d20120d124c47d3ffb",
+      "license": {
+        "spdx": "MIT",
+        "path": "LICENSE"
+      }
+    },
+    {
+      "name": "swiftui-view-refactor",
+      "repo": "https://github.com/Dimillian/Skills",
+      "path": "swiftui-view-refactor",
+      "commit": "0ce51f2e0db5f240a3067a37bbfb86dae6f45bb7",
+      "checksum": "52c5a17275c3ea32a8d7e7fd595488760cef0ca7c9916605a62d03fb47991b4d",
+      "license": {
+        "spdx": "MIT",
+        "path": "LICENSE"
+      }
+    }
+  ]
+}
