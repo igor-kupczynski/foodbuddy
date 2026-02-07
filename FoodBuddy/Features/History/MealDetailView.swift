@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 struct MealDetailView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.modelContext) private var modelContext
 
     let meal: Meal
@@ -49,6 +50,7 @@ struct MealDetailView: View {
                 .onDelete(perform: deleteEntries)
             }
         }
+        .contentMargins(horizontalSizeClass == .regular ? 24 : 0, for: .scrollContent)
         .navigationTitle(mealTypeName)
         .navigationBarTitleDisplayMode(.inline)
         .alert("Could Not Delete Entry", isPresented: isShowingError, actions: {

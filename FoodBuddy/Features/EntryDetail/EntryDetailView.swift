@@ -3,19 +3,27 @@ import SwiftUI
 
 struct EntryDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.modelContext) private var modelContext
 
     let entry: MealEntry
     let syncStatus: SyncStatus
+    let onDelete: (() -> Void)?
 
     @State private var editedLoggedAt: Date
     @State private var isShowingDeleteConfirmation = false
     @State private var isShowingReassignmentConfirmation = false
     @State private var deleteErrorMessage: String?
 
-    init(entry: MealEntry, syncStatus: SyncStatus = .cloudEnabled) {
+    init(
+        entry: MealEntry,
+        syncStatus: SyncStatus = .cloudEnabled,
+        onDelete: (() -> Void)? = nil
+    ) {
         self.entry = entry
         self.syncStatus = syncStatus
+        self.onDelete = onDelete
         _editedLoggedAt = State(initialValue: entry.loggedAt)
     }
 
@@ -42,22 +50,28 @@ struct EntryDetailView: View {
         )
     }
 
+    private var shouldUseTwoColumnLayout: Bool {
+        horizontalSizeClass == .regular && !dynamicTypeSize.isAccessibilitySize
+    }
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                imageSection
-                metadataSection
+            Group {
+                if shouldUseTwoColumnLayout {
+                    regularContent
+                } else {
+                    compactContent
+                }
             }
             .padding()
+            .frame(maxWidth: 1_100, alignment: .topLeading)
         }
         .navigationTitle("Entry")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button(role: .destructive) {
-                    isShowingDeleteConfirmation = true
-                } label: {
-                    Label("Delete", systemImage: "trash")
+            if !shouldUseTwoColumnLayout {
+                ToolbarItem(placement: .topBarTrailing) {
+                    deleteButton
                 }
             }
         }
@@ -86,13 +100,35 @@ struct EntryDetailView: View {
         })
     }
 
+    private var regularContent: some View {
+        HStack(alignment: .top, spacing: 24) {
+            imageSection
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+
+            metadataSection
+                .padding(16)
+                .frame(width: 360, alignment: .topLeading)
+                .background {
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(.thinMaterial)
+                }
+        }
+    }
+
+    private var compactContent: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            imageSection
+            metadataSection
+        }
+    }
+
     @ViewBuilder
     private var imageSection: some View {
         if let image = fullImage ?? thumbnailImage {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFit()
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: shouldUseTwoColumnLayout ? 700 : nil)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
 
             if fullImage == nil {
@@ -148,8 +184,22 @@ struct EntryDetailView: View {
                     }
                     .buttonStyle(.bordered)
                 }
+
+                if shouldUseTwoColumnLayout {
+                    deleteButton
+                }
             }
         }
+    }
+
+    private var deleteButton: some View {
+        Button(role: .destructive) {
+            isShowingDeleteConfirmation = true
+        } label: {
+            Label("Delete Entry", systemImage: "trash")
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.bordered)
     }
 
     private var hasLoggedAtChanges: Bool {
@@ -179,7 +229,12 @@ struct EntryDetailView: View {
     private func deleteEntry() {
         do {
             try service.delete(entry: entry)
-            dismiss()
+
+            if let onDelete {
+                onDelete()
+            } else {
+                dismiss()
+            }
         } catch {
             deleteErrorMessage = error.localizedDescription
         }

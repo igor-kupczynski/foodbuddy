@@ -11,11 +11,13 @@
 		07E9457B01DA30E725C21BAF /* MealType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55FA85C02077513D332A96D2 /* MealType.swift */; };
 		090A3B6772099077C9FAE66E /* MealTypeManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 568838D20BA0FC7B3F7A18F4 /* MealTypeManagementView.swift */; };
 		0EB4F5CD1EE8534055868428 /* PlatformImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B027CC85DC7D0F912FBDEAF /* PlatformImage.swift */; };
+		12E245B3FBBE3495DD660CFC /* HistorySelectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9C3C20D3180E5F754E01820 /* HistorySelectionState.swift */; };
 		189F0663F13CC69E0C067D31 /* PhotoAssetSyncState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9917F34ACD123DC0DCEEEF21 /* PhotoAssetSyncState.swift */; };
 		1C3159C3A9FBD85D0564A935 /* CloudPhotoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C22509208C0970B9C0A7645 /* CloudPhotoStore.swift */; };
 		1CD9029A47E66BDAE4C406DC /* ImageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE54001850B673CBEB4EFD96 /* ImageStore.swift */; };
 		24811547D5528931B8034B2D /* EntryPhotoAsset.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D1D987E6F593072F19F3DB /* EntryPhotoAsset.swift */; };
 		273C29BD807FD5FF7043196D /* MealEntryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A751A33C3ED3FC084668149 /* MealEntryService.swift */; };
+		28A33543BCEE12E1A861589C /* HistorySelectionStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034BE7C6AA686FA40DB18B58 /* HistorySelectionStateTests.swift */; };
 		2ECAA47C3FDFB54D63466B92 /* PersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02D037E70BE4AA1BD223F9F5 /* PersistenceController.swift */; };
 		31AB669E8A4429430B1951C8 /* ImagePreprocessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5A90A52FFE0C22F3F5EAE8 /* ImagePreprocessor.swift */; };
 		36391E1E27029E87A818C443 /* CaptureMealTypeSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFBD74C417F2475CC2FB4A0 /* CaptureMealTypeSheet.swift */; };
@@ -58,6 +60,7 @@
 		D091A916E3030B8C31000F9E /* MetadataConflictResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6520E1369AC99ED710FB0A1A /* MetadataConflictResolver.swift */; };
 		D2B1BD14AD379DA7AEB00642 /* MealDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1FE2C5DB051EEE7DA94FBE5 /* MealDetailView.swift */; };
 		D7CFC50FF72CB4A0C850446D /* MealEntryRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B47578BCBF9C2EC0314332A5 /* MealEntryRepository.swift */; };
+		D9D8BC19B966B8BD38F038CC /* HistorySelectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9C3C20D3180E5F754E01820 /* HistorySelectionState.swift */; };
 		EF789FEB4881626283775598 /* UpdatedAtVersioned.swift in Sources */ = {isa = PBXBuildFile; fileRef = C755DF9CF511D4715D44CA1E /* UpdatedAtVersioned.swift */; };
 		F0DF06CF2621574C159E96F3 /* MetadataConflictResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6520E1369AC99ED710FB0A1A /* MetadataConflictResolver.swift */; };
 		F2921A92DC4B1552F7615266 /* MealEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35495D8E8FE2937FAE5B1170 /* MealEntry.swift */; };
@@ -66,6 +69,7 @@
 
 /* Begin PBXFileReference section */
 		02D037E70BE4AA1BD223F9F5 /* PersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceController.swift; sourceTree = "<group>"; };
+		034BE7C6AA686FA40DB18B58 /* HistorySelectionStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistorySelectionStateTests.swift; sourceTree = "<group>"; };
 		13CF457AE1EDD1E82869800D /* MealService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealService.swift; sourceTree = "<group>"; };
 		271E17C477E438FE063E3813 /* CameraPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPicker.swift; sourceTree = "<group>"; };
 		2842C8A80534142F06FB6C8D /* Meal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Meal.swift; sourceTree = "<group>"; };
@@ -96,6 +100,7 @@
 		B47578BCBF9C2EC0314332A5 /* MealEntryRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEntryRepository.swift; sourceTree = "<group>"; };
 		C755DF9CF511D4715D44CA1E /* UpdatedAtVersioned.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdatedAtVersioned.swift; sourceTree = "<group>"; };
 		C99E9DE840DC51DE8D4691FD /* TestImageFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestImageFactory.swift; sourceTree = "<group>"; };
+		C9C3C20D3180E5F754E01820 /* HistorySelectionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistorySelectionState.swift; sourceTree = "<group>"; };
 		CAFBD74C417F2475CC2FB4A0 /* CaptureMealTypeSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureMealTypeSheet.swift; sourceTree = "<group>"; };
 		D352C4980CAC89DBD9E80A2F /* PhotoSyncServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoSyncServiceTests.swift; sourceTree = "<group>"; };
 		DE9A27E147657D9ACC677493 /* Dependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dependencies.swift; sourceTree = "<group>"; };
@@ -199,6 +204,7 @@
 			isa = PBXGroup;
 			children = (
 				E6D1D987E6F593072F19F3DB /* EntryPhotoAsset.swift */,
+				C9C3C20D3180E5F754E01820 /* HistorySelectionState.swift */,
 				2842C8A80534142F06FB6C8D /* Meal.swift */,
 				35495D8E8FE2937FAE5B1170 /* MealEntry.swift */,
 				55FA85C02077513D332A96D2 /* MealType.swift */,
@@ -238,6 +244,7 @@
 		B91FEAA47402227EFE531139 /* FoodBuddyCoreTests */ = {
 			isa = PBXGroup;
 			children = (
+				034BE7C6AA686FA40DB18B58 /* HistorySelectionStateTests.swift */,
 				9D9A61EE53D76DC674AABCC7 /* ImagePreprocessorTests.swift */,
 				F6CD7161495B1784EB0B1818 /* ImageStoreTests.swift */,
 				ECD0F55D985A8070DFD31F2E /* MealEntryServiceTests.swift */,
@@ -343,6 +350,7 @@
 				24811547D5528931B8034B2D /* EntryPhotoAsset.swift in Sources */,
 				928DC5B4BBAC4462C5E01576 /* EntryRowView.swift in Sources */,
 				72F4C23C71741839E24709CC /* FoodBuddyApp.swift in Sources */,
+				12E245B3FBBE3495DD660CFC /* HistorySelectionState.swift in Sources */,
 				A959E6A5DEEC4EA426BEAC79 /* HistoryView.swift in Sources */,
 				31AB669E8A4429430B1951C8 /* ImagePreprocessor.swift in Sources */,
 				1CD9029A47E66BDAE4C406DC /* ImageStore.swift in Sources */,
@@ -375,6 +383,8 @@
 				BE228F28C4DD42460411B453 /* CaptureIngestCoordinator.swift in Sources */,
 				00AE3A523F8E9EFA0727E8A0 /* CloudPhotoStore.swift in Sources */,
 				B32E994F55D84495037E27DF /* EntryPhotoAsset.swift in Sources */,
+				D9D8BC19B966B8BD38F038CC /* HistorySelectionState.swift in Sources */,
+				28A33543BCEE12E1A861589C /* HistorySelectionStateTests.swift in Sources */,
 				9216E5926954B8AC3C155F04 /* ImagePreprocessor.swift in Sources */,
 				4464DAB8EE49527D8E848225 /* ImagePreprocessorTests.swift in Sources */,
 				4E751A43B3EA4DCEEDAB0DA0 /* ImageStore.swift in Sources */,

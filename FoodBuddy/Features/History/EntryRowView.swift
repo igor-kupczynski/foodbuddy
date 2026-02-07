@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct EntryRowView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
     let entry: MealEntry
     let imageStore: ImageStore
 
@@ -31,17 +33,21 @@ struct EntryRowView: View {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFill()
-                .frame(width: 72, height: 72)
+                .frame(width: thumbnailSize, height: thumbnailSize)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
         } else {
             RoundedRectangle(cornerRadius: 10)
                 .fill(.gray.opacity(0.2))
-                .frame(width: 72, height: 72)
+                .frame(width: thumbnailSize, height: thumbnailSize)
                 .overlay {
                     Image(systemName: "photo")
                         .foregroundStyle(.secondary)
                 }
         }
+    }
+
+    private var thumbnailSize: CGFloat {
+        horizontalSizeClass == .regular ? 86 : 72
     }
 
     private var thumbnailImage: PlatformImage? {

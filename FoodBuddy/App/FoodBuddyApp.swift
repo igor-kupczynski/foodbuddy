@@ -14,10 +14,24 @@ struct FoodBuddyApp: App {
 
     var body: some Scene {
         WindowGroup {
-            NavigationStack {
-                HistoryView(syncStatus: syncStatus)
-            }
+            AdaptiveRootView(syncStatus: syncStatus)
         }
         .modelContainer(modelContainer)
+    }
+}
+
+private struct AdaptiveRootView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    let syncStatus: SyncStatus
+
+    var body: some View {
+        if horizontalSizeClass == .compact {
+            NavigationStack {
+                HistoryView(syncStatus: syncStatus, layoutMode: .compact)
+            }
+        } else {
+            HistoryView(syncStatus: syncStatus, layoutMode: .regular)
+        }
     }
 }

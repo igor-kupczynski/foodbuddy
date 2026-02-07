@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct MealRowView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
     let meal: Meal
     let mealTypeName: String
     let imageStore: ImageStore
@@ -12,10 +14,12 @@ struct MealRowView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(mealTypeName)
                     .font(.headline)
+                    .lineLimit(1)
 
                 Text(timeSummary)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
 
                 Text("\(meal.entries.count) entr\(meal.entries.count == 1 ? "y" : "ies")")
                     .font(.caption)
@@ -33,17 +37,21 @@ struct MealRowView: View {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFill()
-                .frame(width: 72, height: 72)
+                .frame(width: thumbnailSize, height: thumbnailSize)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
         } else {
             RoundedRectangle(cornerRadius: 10)
                 .fill(.gray.opacity(0.2))
-                .frame(width: 72, height: 72)
+                .frame(width: thumbnailSize, height: thumbnailSize)
                 .overlay {
                     Image(systemName: "photo")
                         .foregroundStyle(.secondary)
                 }
         }
+    }
+
+    private var thumbnailSize: CGFloat {
+        horizontalSizeClass == .regular ? 86 : 72
     }
 
     private var latestThumbnailImage: PlatformImage? {
