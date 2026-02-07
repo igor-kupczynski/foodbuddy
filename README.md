@@ -148,3 +148,7 @@ FoodBuddy/
 FoodBuddyCoreTests/
 docs/
 ```
+
+## License
+
+MIT. See `LICENSE`.
