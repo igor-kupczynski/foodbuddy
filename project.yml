@@ -1,0 +1,59 @@
+name: FoodBuddy
+options:
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: 6.0
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 1.0
+    GENERATE_INFOPLIST_FILE: NO
+targets:
+  FoodBuddy:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: FoodBuddy
+    info:
+      path: FoodBuddy/App/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.igorkupczynski.foodbuddy
+        PRODUCT_NAME: FoodBuddy
+        INFOPLIST_FILE: FoodBuddy/App/Info.plist
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: YES
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGNING_REQUIRED: NO
+
+  FoodBuddyCoreTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: FoodBuddy/Domain
+      - path: FoodBuddy/Storage
+      - path: FoodBuddy/Services
+      - path: FoodBuddy/Support/PlatformImage.swift
+      - path: FoodBuddy/Features/Capture/CaptureIngestCoordinator.swift
+      - path: FoodBuddyCoreTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.igorkupczynski.foodbuddy.coretests
+        PRODUCT_NAME: FoodBuddyCoreTests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGNING_REQUIRED: NO
+
+schemes:
+  FoodBuddy:
+    build:
+      targets:
+        FoodBuddy: all
+        FoodBuddyCoreTests: [test]
+    test:
+      gatherCoverageData: false
+      targets:
+        - name: FoodBuddyCoreTests
+    run:
+      config: Debug
