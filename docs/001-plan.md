@@ -165,7 +165,7 @@ FoodBuddy/
 Tests:
 
 ```text
-FoodBuddyTests/
+FoodBuddyCoreTests/
   MealEntryServiceTests.swift
   ImageStoreTests.swift
 ```
@@ -223,7 +223,7 @@ MVP is complete when:
 
 Recommended gate command (once project exists):
 
-- `xcodebuild test -scheme FoodBuddy -destination 'platform=iOS Simulator,name=iPhone 16'`
+- `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64'`
 
 Keep this gate limited to the fast verifier tests only.
 
@@ -244,13 +244,28 @@ Last updated: 2026-02-07
 
 ### Milestone Status
 
-- M1 Project scaffold: `In Progress`
-- M2 Storage foundation: `Pending`
-- M3 Capture integration: `Pending`
-- M4 History + detail + delete: `Pending`
-- M5 Fast verifier: `Pending`
+- M1 Project scaffold: `Completed`
+- M2 Storage foundation: `Completed`
+- M3 Capture integration: `Completed`
+- M4 History + detail + delete: `Completed`
+- M5 Fast verifier: `Completed`
 
 ### Active Task Log
 
-- [In Progress] M1.1 Create SwiftUI app target and basic navigation.
-- [Pending] M1.2 Add History screen placeholder and `Add` button.
+- [Completed] M1.1 Create SwiftUI app target and basic navigation.
+- [Completed] M1.2 Add History screen placeholder and `Add` button.
+- [Completed] M2.1 Implement SwiftData `MealEntry`.
+- [Completed] M2.2 Implement `ImageStore`.
+- [Completed] M2.3 Implement `MealEntryService`.
+- [Completed] M3.1 Add capture source action sheet with camera/library options.
+- [Completed] M3.2 Wire camera and library outputs to shared ingest path.
+- [Completed] M4.1 Render persisted history list sorted newest-first.
+- [Completed] M4.2 Implement entry detail with full-size image and timestamp.
+- [Completed] M4.3 Implement delete from history and detail with file cleanup.
+- [Completed] M5.1 Add `ImageStoreTests` and `MealEntryServiceTests`.
+- [Completed] M5.2 Verify fast automated test runtime and stability.
+
+### Verification Log
+
+- 2026-02-07: `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64'` passed.
+- 7 tests executed, 0 failures, total test execution ~0.36s.

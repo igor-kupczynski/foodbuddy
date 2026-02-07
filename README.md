@@ -4,51 +4,65 @@ FoodBuddy is an iOS MVP for meal photo logging.
 
 ## Current Status
 
-Project bootstrap is in progress from `docs/001-plan.md`.
+MVP implementation from `docs/001-plan.md` is complete.
+
+Implemented features:
+
+- Add a meal entry from camera.
+- Add a meal entry from photo library.
+- Persist meal entries locally with SwiftData + image files.
+- Show history newest-first.
+- Open full-size entry detail.
+- Delete entries from history and detail with image-file cleanup.
+- Fast automated verifier for core invariants.
 
 ## Development Requirements
 
 ### Required
 
-- macOS with Xcode 26.2 or newer (includes `xcodebuild` and iOS Simulator).
-- Swift 6.2+ toolchain (bundled with Xcode 26.2+).
+- macOS with Xcode 26.2+
+- Swift 6.2+ (bundled with Xcode)
+- `xcodegen` (project generation)
 
-### Recommended Tools
+### Recommended
 
-- `xcodegen` for deterministic project generation from `project.yml`.
-- `xcbeautify` for readable `xcodebuild` output.
-- `gh` CLI for GitHub workflows.
+- `xcbeautify` (clean test/build logs)
+- `gh` (GitHub workflows)
 
-### Verify Installed Tooling
-
-```bash
-xcodebuild -version
-swift --version
-gh --version
-```
-
-### Install Missing Tools (Homebrew)
+### Install Tooling (Homebrew)
 
 ```bash
 brew install xcodegen xcbeautify gh
 ```
 
-### Build/Test Baseline Commands
+### Verify Tooling
 
 ```bash
-# Generate project (once project.yml exists)
-xcodegen generate
-
-# Run tests (example destination, adjust as needed)
-xcodebuild test -scheme FoodBuddy -destination 'platform=iOS Simulator,name=iPhone 16'
+xcodebuild -version
+swift --version
+xcodegen --version
+gh --version
 ```
 
-## MVP Goals
+## Build and Test
 
-- Capture a meal photo from camera.
-- Choose a meal photo from photo library.
-- Persist entries locally with timestamp.
-- Show newest-first history.
-- Open full-size detail view.
-- Delete entries and clean up image files.
-- Ship fast automated tests for core save/list/delete invariants.
+```bash
+# Generate Xcode project
+xcodegen generate
+
+# Fast verifier tests (no simulator required)
+xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64' | xcbeautify
+```
+
+## Project Layout
+
+```text
+FoodBuddy/
+  App/
+  Domain/
+  Features/
+  Services/
+  Storage/
+  Support/
+FoodBuddyCoreTests/
+```
