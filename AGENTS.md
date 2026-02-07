@@ -17,3 +17,4 @@
 - Simulator run: open `FoodBuddy.xcodeproj`, select `FoodBuddy` scheme + iOS simulator, then `Cmd+R`.
 - Physical iPhone run: if needed, enable code signing in `project.yml`, regenerate project, set Team in Xcode Signing & Capabilities, then run on device.
 - When changing behavior, update/add tests first or in the same change and keep verifier green before finalizing.
+- Do not commit secrets or private data to the repository. Assume we will opensource it soon.
