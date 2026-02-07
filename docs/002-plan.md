@@ -248,27 +248,27 @@ Last updated: 2026-02-07
 
 ### Milestone Status
 
-- M1 Data model and bootstrap: `Pending`
-- M2 Capture and meal association: `Pending`
-- M3 Edit and reassignment: `Pending`
-- M4 History/navigation: `Pending`
-- M5 Meal type management: `Pending`
-- M6 Metadata sync: `Pending`
-- M7 Verification and hardening: `Pending`
+- M1 Data model and bootstrap: `Completed`
+- M2 Capture and meal association: `Completed`
+- M3 Edit and reassignment: `Completed`
+- M4 History/navigation: `Completed`
+- M5 Meal type management: `Completed`
+- M6 Metadata sync: `Completed`
+- M7 Verification and hardening: `Completed`
 
 ### Active Task Log
 
-- [Pending] M1.1 Create `Meal`, `MealEntry`, and `MealType` models.
-- [Pending] M1.2 Implement default meal-type bootstrap.
-- [Pending] M2.1 Implement meal-type suggestion windows.
-- [Pending] M2.2 Attach ingest flow to existing/new meals.
-- [Pending] M3.1 Add entry date/time edit UI.
-- [Pending] M3.2 Add confirmation-gated meal reassignment.
-- [Pending] M4.1 Implement meal-first history UI.
-- [Pending] M4.2 Implement meal detail drill-down.
-- [Pending] M5.1 Implement meal type rename flow.
-- [Pending] M5.2 Implement custom meal type creation.
-- [Pending] M6.1 Enable SwiftData CloudKit metadata sync.
-- [Pending] M6.2 Add sync status/error UX.
-- [Pending] M7.1 Add tests for meal grouping and suggestion logic.
-- [Pending] M7.2 Add tests for reassignment and sync conflict policy.
+- [Completed] M1.1 Create `Meal`, `MealEntry`, and `MealType` models.
+- [Completed] M1.2 Implement default meal-type bootstrap.
+- [Completed] M2.1 Implement meal-type suggestion windows.
+- [Completed] M2.2 Attach ingest flow to existing/new meals.
+- [Completed] M3.1 Add entry date/time edit UI.
+- [Completed] M3.2 Add confirmation-gated meal reassignment.
+- [Completed] M4.1 Implement meal-first history UI.
+- [Completed] M4.2 Implement meal detail drill-down.
+- [Completed] M5.1 Implement meal type rename flow.
+- [Completed] M5.2 Implement custom meal type creation.
+- [Completed] M6.1 Enable SwiftData CloudKit metadata sync.
+- [Completed] M6.2 Add sync status/error UX.
+- [Completed] M7.1 Add tests for meal grouping and suggestion logic.
+- [Completed] M7.2 Add tests for reassignment and sync conflict policy.

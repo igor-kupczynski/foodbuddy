@@ -1,20 +1,20 @@
 # FoodBuddy
 
-FoodBuddy is an iOS MVP for meal photo logging.
+FoodBuddy is an iOS meal logger with meal-first history, editable meal timestamps, and SwiftData metadata sync via iCloud CloudKit.
 
 ## Current Status
 
-MVP implementation from `docs/001-plan.md` is complete.
+Iteration `002` from `docs/002-plan.md` is complete.
 
 Implemented features:
 
-- Add a meal entry from camera.
-- Add a meal entry from photo library.
-- Persist meal entries locally with SwiftData + image files.
-- Show history newest-first.
-- Open full-size entry detail.
-- Delete entries from history and detail with image-file cleanup.
-- Fast automated verifier for core invariants.
+- Meal container model (`Meal`, `MealEntry`, `MealType`) with multiple entries per meal.
+- Camera/library ingest with suggested meal type and user override before save.
+- Editable `loggedAt` timestamp with confirmation when reassignment would move to another meal.
+- Meal-first history navigation with meal detail drill-down.
+- Meal type management (rename existing, add custom).
+- SwiftData metadata sync configured for CloudKit private DB with automatic local fallback.
+- Fast automated verifier covering suggestions, meal association/reassignment, meal type ops, and LWW conflict policy.
 
 ## Development Requirements
 
@@ -27,7 +27,7 @@ Implemented features:
 ### Recommended
 
 - `xcbeautify` (clean test/build logs)
-- `gh` (GitHub workflows)
+- `gh` (GitHub workflows and PR operations)
 
 ### Install Tooling (Homebrew)
 
@@ -47,25 +47,16 @@ gh --version
 ## Local Test Workflow
 
 ```bash
-# Generate Xcode project
+# Regenerate project from project.yml
 xcodegen generate
 
-# Fast verifier tests (no simulator required)
+# Fast verifier tests (no iOS simulator required)
 xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64' | xcbeautify
 ```
 
-What this runs:
+If `xcbeautify` is not installed, run the same `xcodebuild test` command without the pipe.
 
-- `FoodBuddyCoreTests` only (logic tests for `ImageStore` and `MealEntryService`).
-- No iOS simulator boot required.
-
-If you do not have `xcbeautify` installed, run:
-
-```bash
-xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64'
-```
-
-## Run on iOS Simulator (Emulator)
+## Run on iOS Simulator
 
 1. Generate and open the project:
 
@@ -74,29 +65,23 @@ xcodegen generate
 open FoodBuddy.xcodeproj
 ```
 
-2. In Xcode, choose scheme `FoodBuddy` and a simulator device (for example, `iPhone 16`).
-3. If no iOS simulator devices are available, install an iOS runtime from:
-Xcode -> Settings -> Components.
-4. Press `Cmd+R` to build and run.
+2. In Xcode, choose scheme `FoodBuddy` and an iOS simulator device.
+3. Press `Cmd+R`.
 
 Notes:
 
-- The camera is typically unavailable in simulator; use **Choose from Library** there.
-- You can drag an image file into the simulator Photos app to seed test data.
+- Camera is usually unavailable in simulator; use **Choose from Library**.
+- Drag image files into the simulator Photos app to seed test data.
 
 ## Run on a Physical iPhone
 
-This repo is configured for CI/local unsigned builds by default (`CODE_SIGNING_ALLOWED=NO`), so physical-device installs require a local signing change.
+This repo defaults to unsigned local/CI builds (`CODE_SIGNING_ALLOWED=NO`). For physical-device installs, enable signing locally.
 
-1. Enable code signing in `project.yml` for target `FoodBuddy`:
+1. In `project.yml`, set the `FoodBuddy` target signing keys to `YES`:
 
 ```yaml
-targets:
-  FoodBuddy:
-    settings:
-      base:
-        CODE_SIGNING_ALLOWED: YES
-        CODE_SIGNING_REQUIRED: YES
+CODE_SIGNING_ALLOWED: YES
+CODE_SIGNING_REQUIRED: YES
 ```
 
 2. Regenerate and open:
@@ -107,15 +92,10 @@ open FoodBuddy.xcodeproj
 ```
 
 3. In Xcode -> target `FoodBuddy` -> Signing & Capabilities:
-- Set a Team (personal/free Apple ID is fine for local device testing).
-- Ensure the bundle identifier is unique for your account/device.
-4. Connect iPhone via USB (or same-network wireless debugging), unlock it, and trust the Mac.
-5. On iPhone, enable Developer Mode if prompted.
-6. Select your iPhone as run destination and press `Cmd+R`.
-
-If iOS blocks first launch due to trust:
-
-- On iPhone go to `Settings -> General -> VPN & Device Management`, trust your developer certificate, then relaunch.
+- Set a Team.
+- Keep bundle ID unique for your account/device.
+- Ensure iCloud capability and container `iCloud.com.igorkupczynski.foodbuddy` are enabled for CloudKit sync validation.
+4. Connect/select your iPhone and press `Cmd+R`.
 
 ## Project Layout
 
@@ -128,4 +108,5 @@ FoodBuddy/
   Storage/
   Support/
 FoodBuddyCoreTests/
+docs/
 ```
