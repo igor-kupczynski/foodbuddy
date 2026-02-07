@@ -8,7 +8,7 @@ enum Dependencies {
     @MainActor
     static func makeMealEntryService(modelContext: ModelContext) -> MealEntryService {
         MealEntryService(
-            repository: SwiftDataMealEntryRepository(modelContext: modelContext),
+            modelContext: modelContext,
             imageStore: makeImageStore()
         )
     }

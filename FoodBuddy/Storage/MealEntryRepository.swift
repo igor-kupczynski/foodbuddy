@@ -32,8 +32,9 @@ struct SwiftDataMealEntryRepository: MealEntryRepository {
     }
 
     func fetchAllNewestFirst() throws -> [MealEntry] {
-        var descriptor = FetchDescriptor<MealEntry>()
-        descriptor.sortBy = [SortDescriptor(\MealEntry.createdAt, order: .reverse)]
+        let descriptor = FetchDescriptor<MealEntry>(
+            sortBy: [SortDescriptor(\MealEntry.loggedAt, order: .reverse)]
+        )
         return try modelContext.fetch(descriptor)
     }
 
