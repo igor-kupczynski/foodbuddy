@@ -18,6 +18,6 @@
 - Fast local verifier: run `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64'` (pipe to `xcbeautify` if installed).
 - Iteration 004 pre-merge gate: complete `docs/004-plan.md` section 9 iPad manual smoke checklist and record pass/fail notes.
 - Simulator run: open `FoodBuddy.xcodeproj`, select `FoodBuddy` scheme + iOS simulator, then `Cmd+R`.
-- Physical iPhone run: if needed, enable code signing in `project.yml`, regenerate project, set Team in Xcode Signing & Capabilities, then run on device.
+- Physical iPhone run: follow the deterministic local phone flow in `README.md` and use `docs/APPLE_DEV_BASICS.md` for signing/capability background and troubleshooting.
 - When changing behavior, update/add tests first or in the same change and keep verifier green before finalizing.
 - Do not commit secrets or private data to the repository. Assume we will opensource it soon.
