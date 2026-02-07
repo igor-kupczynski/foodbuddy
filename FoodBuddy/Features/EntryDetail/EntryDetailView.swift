@@ -7,8 +7,15 @@ struct EntryDetailView: View {
 
     let entry: MealEntry
 
+    @State private var editedLoggedAt: Date
     @State private var isShowingDeleteConfirmation = false
+    @State private var isShowingReassignmentConfirmation = false
     @State private var deleteErrorMessage: String?
+
+    init(entry: MealEntry) {
+        self.entry = entry
+        _editedLoggedAt = State(initialValue: entry.loggedAt)
+    }
 
     private var imageStore: ImageStore {
         Dependencies.makeImageStore()
@@ -56,7 +63,17 @@ struct EntryDetailView: View {
         } message: {
             Text("This will remove the meal entry and its image.")
         }
-        .alert("Could Not Delete Entry", isPresented: isShowingDeleteError, actions: {
+        .alert("Move Entry to Another Meal?", isPresented: $isShowingReassignmentConfirmation) {
+            Button("Move", role: .destructive) {
+                applyLoggedAtUpdate(allowReassignment: true)
+            }
+            Button("Cancel", role: .cancel) {
+                editedLoggedAt = entry.loggedAt
+            }
+        } message: {
+            Text("This date/time change moves the entry into a different meal grouping.")
+        }
+        .alert("Could Not Save Changes", isPresented: isShowingDeleteError, actions: {
             Button("OK", role: .cancel) {}
         }, message: {
             Text(deleteErrorMessage ?? "Unknown error")
@@ -81,13 +98,60 @@ struct EntryDetailView: View {
     }
 
     private var metadataSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Captured")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Captured")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
-            Text(entry.createdAt.formatted(date: .abbreviated, time: .shortened))
-                .font(.headline)
+                Text(entry.capturedAt.formatted(date: .abbreviated, time: .shortened))
+                    .font(.headline)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Logged At")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                DatePicker(
+                    "Date & Time",
+                    selection: $editedLoggedAt,
+                    displayedComponents: [.date, .hourAndMinute]
+                )
+                .labelsHidden()
+
+                Button("Save Date & Time") {
+                    applyLoggedAtUpdate(allowReassignment: false)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!hasLoggedAtChanges)
+            }
+        }
+    }
+
+    private var hasLoggedAtChanges: Bool {
+        abs(editedLoggedAt.timeIntervalSince(entry.loggedAt)) > 0.5
+    }
+
+    private func applyLoggedAtUpdate(allowReassignment: Bool) {
+        do {
+            let result = try service.updateLoggedAt(
+                entry: entry,
+                newLoggedAt: editedLoggedAt,
+                allowMealReassignment: allowReassignment
+            )
+
+            switch result {
+            case .updatedWithoutReassignment, .updatedWithReassignment:
+                editedLoggedAt = entry.loggedAt
+            case .requiresMealReassignmentConfirmation:
+                isShowingReassignmentConfirmation = true
+            }
+        } catch {
+            deleteErrorMessage = error.localizedDescription
+            editedLoggedAt = entry.loggedAt
         }
     }
 

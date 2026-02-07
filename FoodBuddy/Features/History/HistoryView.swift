@@ -5,12 +5,25 @@ import UIKit
 struct HistoryView: View {
     @Environment(\.modelContext) private var modelContext
 
-    @Query(sort: [SortDescriptor(\MealEntry.createdAt, order: .reverse)])
-    private var entries: [MealEntry]
+    let syncStatus: SyncStatus
+
+    @Query(sort: [SortDescriptor(\Meal.updatedAt, order: .reverse)])
+    private var meals: [Meal]
+
+    @Query(sort: [SortDescriptor(\MealType.displayName)])
+    private var mealTypes: [MealType]
 
     @State private var isShowingCaptureSource = false
     @State private var isShowingCamera = false
     @State private var isShowingLibraryPicker = false
+    @State private var isShowingMealTypeChooser = false
+    @State private var isShowingMealTypeManagement = false
+
+    @State private var pendingImage: PlatformImage?
+    @State private var pendingLoggedAt = Date.now
+    @State private var selectedMealTypeID: UUID?
+
+    @State private var hasBootstrappedMealTypes = false
     @State private var ingestErrorMessage: String?
 
     private var imageStore: ImageStore {
@@ -34,7 +47,12 @@ struct HistoryView: View {
 
     var body: some View {
         List {
-            if entries.isEmpty {
+            Section {
+                syncStatusRow
+            }
+            .listRowSeparator(.hidden)
+
+            if meals.isEmpty {
                 ContentUnavailableView(
                     "No Meals Yet",
                     systemImage: "fork.knife.circle",
@@ -43,22 +61,44 @@ struct HistoryView: View {
                 .frame(maxWidth: .infinity)
                 .listRowSeparator(.hidden)
             } else {
-                ForEach(entries) { entry in
+                ForEach(meals) { meal in
                     NavigationLink {
-                        EntryDetailView(entry: entry)
+                        MealDetailView(
+                            meal: meal,
+                            mealTypeName: mealTypeName(for: meal)
+                        )
                     } label: {
-                        EntryRowView(entry: entry, imageStore: imageStore)
+                        MealRowView(
+                            meal: meal,
+                            mealTypeName: mealTypeName(for: meal),
+                            imageStore: imageStore
+                        )
                     }
                 }
-                .onDelete(perform: deleteEntries)
             }
         }
         .listStyle(.plain)
         .navigationTitle("History")
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Meal Types") {
+                    isShowingMealTypeManagement = true
+                }
+            }
+
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Add") {
                     isShowingCaptureSource = true
+                }
+            }
+        }
+        .task {
+            if !hasBootstrappedMealTypes {
+                do {
+                    try service.bootstrapMealTypesIfNeeded()
+                    hasBootstrappedMealTypes = true
+                } catch {
+                    ingestErrorMessage = error.localizedDescription
                 }
             }
         }
@@ -76,7 +116,7 @@ struct HistoryView: View {
         .sheet(isPresented: $isShowingCamera) {
             if UIImagePickerController.isSourceTypeAvailable(.camera) {
                 CameraPicker { image in
-                    ingestCameraImage(image)
+                    beginIngest(with: image)
                 }
             } else {
                 ContentUnavailableView(
@@ -88,7 +128,24 @@ struct HistoryView: View {
         }
         .sheet(isPresented: $isShowingLibraryPicker) {
             LibraryPicker { image in
-                ingestLibraryImage(image)
+                beginIngest(with: image)
+            }
+        }
+        .sheet(isPresented: $isShowingMealTypeChooser, onDismiss: clearPendingCapture) {
+            if let pendingImage {
+                CaptureMealTypeSheet(
+                    image: pendingImage,
+                    mealTypes: mealTypes,
+                    loggedAt: pendingLoggedAt,
+                    onSave: savePendingCapture,
+                    onCancel: clearPendingCapture,
+                    selectedMealTypeID: $selectedMealTypeID
+                )
+            }
+        }
+        .sheet(isPresented: $isShowingMealTypeManagement) {
+            NavigationStack {
+                MealTypeManagementView()
             }
         }
         .alert("Could Not Save Entry", isPresented: isShowingIngestError, actions: {
@@ -98,39 +155,70 @@ struct HistoryView: View {
         })
     }
 
-    private func ingestCameraImage(_ image: PlatformImage) {
-        let coordinator = CaptureIngestCoordinator(ingestService: service)
-        do {
-            try coordinator.ingestFromCamera(image)
-        } catch {
-            ingestErrorMessage = error.localizedDescription
+    private var syncStatusRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(syncStatus.title, systemImage: syncStatus.isCloudEnabled ? "icloud" : "externaldrive")
+                .font(.subheadline.weight(.semibold))
+            Text(syncStatus.detail)
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
+        .padding(.vertical, 4)
     }
 
-    private func ingestLibraryImage(_ image: PlatformImage) {
-        let coordinator = CaptureIngestCoordinator(ingestService: service)
-        do {
-            try coordinator.ingestFromLibrary(image)
-        } catch {
-            ingestErrorMessage = error.localizedDescription
-        }
+    private func mealTypeName(for meal: Meal) -> String {
+        mealTypes.first(where: { $0.id == meal.typeId })?.displayName ?? "Unknown Meal"
     }
 
-    private func deleteEntries(at offsets: IndexSet) {
-        for index in offsets {
-            let entry = entries[index]
-            do {
-                try service.delete(entry: entry)
-            } catch {
-                ingestErrorMessage = error.localizedDescription
+    private func beginIngest(with image: PlatformImage) {
+        pendingImage = image
+        pendingLoggedAt = Date.now
+
+        do {
+            selectedMealTypeID = try service.suggestedMealType(for: pendingLoggedAt)?.id
+            if selectedMealTypeID == nil {
+                selectedMealTypeID = mealTypes.first?.id
             }
+            isShowingMealTypeChooser = true
+        } catch {
+            ingestErrorMessage = error.localizedDescription
+            clearPendingCapture()
         }
+    }
+
+    private func savePendingCapture() {
+        guard let pendingImage else {
+            ingestErrorMessage = "Missing captured image"
+            return
+        }
+
+        guard let selectedMealTypeID else {
+            ingestErrorMessage = "Select a meal type before saving"
+            return
+        }
+
+        do {
+            _ = try service.ingest(
+                image: pendingImage,
+                mealTypeID: selectedMealTypeID,
+                loggedAt: pendingLoggedAt
+            )
+            clearPendingCapture()
+        } catch {
+            ingestErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func clearPendingCapture() {
+        pendingImage = nil
+        selectedMealTypeID = nil
+        isShowingMealTypeChooser = false
     }
 }
 
 #Preview {
     NavigationStack {
-        HistoryView()
-            .modelContainer(for: [MealEntry.self], inMemory: true)
+        HistoryView(syncStatus: .cloudEnabled)
+            .modelContainer(for: [Meal.self, MealEntry.self, MealType.self], inMemory: true)
     }
 }

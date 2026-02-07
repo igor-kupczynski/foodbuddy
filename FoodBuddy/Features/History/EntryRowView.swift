@@ -9,9 +9,9 @@ struct EntryRowView: View {
             thumbnail
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(entry.createdAt, style: .date)
+                Text(entry.loggedAt, style: .date)
                     .font(.headline)
-                Text(entry.createdAt, style: .time)
+                Text(entry.loggedAt, style: .time)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }

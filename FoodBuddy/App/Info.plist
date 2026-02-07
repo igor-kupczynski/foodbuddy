@@ -18,5 +18,9 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSCameraUsageDescription</key>
+	<string>FoodBuddy needs camera access to capture meal photos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>FoodBuddy needs photo library access to import meal photos.</string>
 </dict>
 </plist>
