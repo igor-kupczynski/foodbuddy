@@ -9,3 +9,11 @@
 - Keep active plan documents current with completed and blocked task status so work is resumable.
 - Do not make changes outside this repository.
 - Make small, focused git commits as milestones are completed.
+
+## Rules of Engagement
+
+- Before coding: run `xcodegen generate` to sync `FoodBuddy.xcodeproj` from `project.yml`.
+- Fast local verifier: run `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64'` (pipe to `xcbeautify` if installed).
+- Simulator run: open `FoodBuddy.xcodeproj`, select `FoodBuddy` scheme + iOS simulator, then `Cmd+R`.
+- Physical iPhone run: if needed, enable code signing in `project.yml`, regenerate project, set Team in Xcode Signing & Capabilities, then run on device.
+- When changing behavior, update/add tests first or in the same change and keep verifier green before finalizing.
