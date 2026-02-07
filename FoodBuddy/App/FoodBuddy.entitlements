@@ -4,7 +4,7 @@
 <dict>
     <key>com.apple.developer.icloud-container-identifiers</key>
     <array>
-        <string>iCloud.com.igorkupczynski.foodbuddy</string>
+        <string>iCloud.info.kupczynski.foodbuddy</string>
     </array>
     <key>com.apple.developer.icloud-services</key>
     <array>

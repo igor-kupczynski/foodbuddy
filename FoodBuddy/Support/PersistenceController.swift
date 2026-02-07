@@ -1,7 +1,7 @@
 import SwiftData
 
 enum PersistenceController {
-    private static let cloudKitContainerID = "iCloud.com.igorkupczynski.foodbuddy"
+    private static let cloudKitContainerID = "iCloud.info.kupczynski.foodbuddy"
 
     static func makeContainerWithSyncStatus() -> (container: ModelContainer, syncStatus: SyncStatus) {
         let schema = Schema([

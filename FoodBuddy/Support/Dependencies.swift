@@ -1,7 +1,7 @@
 import SwiftData
 
 enum Dependencies {
-    private static let cloudKitContainerID = "iCloud.com.igorkupczynski.foodbuddy"
+    private static let cloudKitContainerID = "iCloud.info.kupczynski.foodbuddy"
 
     static func makeImageStore() -> ImageStore {
         ImageStore.live()

@@ -128,7 +128,7 @@ Optional CloudKit-enabled phone run:
 
 1. Restore `CODE_SIGN_ENTITLEMENTS: FoodBuddy/App/FoodBuddy.entitlements`.
 2. Keep Team/bundle ID consistent with your iCloud container setup.
-3. If you change container from `iCloud.com.igorkupczynski.foodbuddy`, update:
+3. If you change container from `iCloud.info.kupczynski.foodbuddy`, update:
 - `FoodBuddy/App/FoodBuddy.entitlements`
 - `FoodBuddy/Support/Dependencies.swift`
 - `FoodBuddy/Support/PersistenceController.swift`

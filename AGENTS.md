@@ -10,6 +10,7 @@
 - Keep active plan documents current with completed and blocked task status so work is resumable.
 - Do not make changes outside this repository.
 - Make small, focused git commits as milestones are completed.
+- Communication baseline: repository owner is a Cloud SWE (not an Apple/iOS specialist). For Apple platform topics, explain assumptions explicitly, define Apple-specific terms, and prefer concrete step-by-step guidance over shorthand.
 
 ## Rules of Engagement
 
@@ -21,3 +22,11 @@
 - Physical iPhone run: follow the deterministic local phone flow in `README.md` and use `docs/APPLE_DEV_BASICS.md` for signing/capability background and troubleshooting.
 - When changing behavior, update/add tests first or in the same change and keep verifier green before finalizing.
 - Do not commit secrets or private data to the repository. Assume we will opensource it soon.
+
+## Identifier Baseline
+
+- Keep identifier values explicit and consistent when editing signing/CloudKit settings.
+- Current app target bundle ID in `project.yml`: `com.igorkupczynski.foodbuddy`.
+- Current test bundle ID in `project.yml`: `com.igorkupczynski.foodbuddy.coretests`.
+- Local phone dev guidance in `README.md` currently suggests overriding app bundle ID to `info.kupczynski.foodbuddy.dev`.
+- Current CloudKit container ID: `iCloud.info.kupczynski.foodbuddy` (must keep `iCloud.` prefix; container IDs are not bundle IDs).
