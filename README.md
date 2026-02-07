@@ -5,6 +5,7 @@ FoodBuddy is an iOS meal logger with meal-first history, editable meal timestamp
 ## Current Status
 
 Iteration `003` from `docs/003-plan.md` is complete.
+Iteration `004` implementation is active in `docs/004-plan.md` (iPad readiness + adaptive UI); manual iPad smoke validation remains required before merge.
 
 Implemented features:
 
@@ -19,6 +20,8 @@ Implemented features:
 - Meal type management (rename existing, add custom).
 - SwiftData metadata sync configured for CloudKit private DB with automatic local fallback.
 - CloudKit-backed photo asset store integration and sync diagnostics UI with manual retry controls.
+- Adaptive navigation shell: `NavigationStack` on compact width and `NavigationSplitView` on regular width.
+- Regular-width `EntryDetailView` two-column layout (image/content pane + metadata/actions pane).
 - Automated verifier covering preprocessing bounds, ingest-to-pending queue behavior, upload state transitions, retry recovery, and hydration.
 
 ## Development Requirements
@@ -77,6 +80,17 @@ Notes:
 
 - Camera is usually unavailable in simulator; use **Choose from Library**.
 - Drag image files into the simulator Photos app to seed test data.
+
+## iPad Smoke Validation (Required for 004)
+
+Run these checks on an iPad simulator before merge (portrait + landscape where noted):
+
+1. Browse meals -> select meal -> select entry -> edit `loggedAt` -> save.
+2. Switch meals and entries repeatedly in landscape split view; verify selection remains stable.
+3. Delete an entry from detail and verify selection/navigation recovers cleanly.
+4. Open **Photo Sync Details** and **Meal Types** from toolbar.
+5. Complete one **Choose from Library** ingest flow end-to-end.
+6. Trigger **Retry Photo Sync** on a failed asset (or verify retry control is hidden when no failures exist).
 
 ## Run on a Physical iPhone
 
