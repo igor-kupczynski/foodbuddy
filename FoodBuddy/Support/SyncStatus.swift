@@ -6,8 +6,8 @@ struct SyncStatus {
     let isCloudEnabled: Bool
 
     static let cloudEnabled = SyncStatus(
-        title: "iCloud Metadata Sync Enabled",
-        detail: "Meal metadata syncs through your private iCloud database.",
+        title: "iCloud Sync Enabled",
+        detail: "Meal metadata and photo assets sync through your private iCloud database.",
         isCloudEnabled: true
     )
 

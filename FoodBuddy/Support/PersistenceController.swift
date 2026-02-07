@@ -7,6 +7,7 @@ enum PersistenceController {
         let schema = Schema([
             Meal.self,
             MealEntry.self,
+            EntryPhotoAsset.self,
             MealType.self
         ])
 

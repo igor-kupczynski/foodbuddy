@@ -1,20 +1,25 @@
 # FoodBuddy
 
-FoodBuddy is an iOS meal logger with meal-first history, editable meal timestamps, and SwiftData metadata sync via iCloud CloudKit.
+FoodBuddy is an iOS meal logger with meal-first history, editable meal timestamps, and iCloud sync for both meal metadata and meal photos.
 
 ## Current Status
 
-Iteration `002` from `docs/002-plan.md` is complete.
+Iteration `003` from `docs/003-plan.md` is complete.
 
 Implemented features:
 
 - Meal container model (`Meal`, `MealEntry`, `MealType`) with multiple entries per meal.
 - Camera/library ingest with suggested meal type and user override before save.
+- Photo preprocessing pipeline (max long edge `1600px`, JPEG compression, generated `320px` thumbnail).
+- `EntryPhotoAsset` sync model with deterministic entry linkage, retry metadata, and failure state.
+- Queue-based photo upload/download pipeline with exponential backoff retry handling.
+- Missing-photo hydration flow for metadata-only synced entries (placeholder -> thumbnail -> full image).
 - Editable `loggedAt` timestamp with confirmation when reassignment would move to another meal.
 - Meal-first history navigation with meal detail drill-down.
 - Meal type management (rename existing, add custom).
 - SwiftData metadata sync configured for CloudKit private DB with automatic local fallback.
-- Fast automated verifier covering suggestions, meal association/reassignment, meal type ops, and LWW conflict policy.
+- CloudKit-backed photo asset store integration and sync diagnostics UI with manual retry controls.
+- Automated verifier covering preprocessing bounds, ingest-to-pending queue behavior, upload state transitions, retry recovery, and hydration.
 
 ## Development Requirements
 

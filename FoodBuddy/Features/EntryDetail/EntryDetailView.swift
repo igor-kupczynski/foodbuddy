@@ -6,14 +6,16 @@ struct EntryDetailView: View {
     @Environment(\.modelContext) private var modelContext
 
     let entry: MealEntry
+    let syncStatus: SyncStatus
 
     @State private var editedLoggedAt: Date
     @State private var isShowingDeleteConfirmation = false
     @State private var isShowingReassignmentConfirmation = false
     @State private var deleteErrorMessage: String?
 
-    init(entry: MealEntry) {
+    init(entry: MealEntry, syncStatus: SyncStatus = .cloudEnabled) {
         self.entry = entry
+        self.syncStatus = syncStatus
         _editedLoggedAt = State(initialValue: entry.loggedAt)
     }
 
@@ -23,6 +25,10 @@ struct EntryDetailView: View {
 
     private var service: MealEntryService {
         Dependencies.makeMealEntryService(modelContext: modelContext)
+    }
+
+    private var photoSyncService: PhotoSyncService {
+        Dependencies.makePhotoSyncService(modelContext: modelContext, syncStatus: syncStatus)
     }
 
     private var isShowingDeleteError: Binding<Bool> {
@@ -82,12 +88,18 @@ struct EntryDetailView: View {
 
     @ViewBuilder
     private var imageSection: some View {
-        if let image = imageStore.loadImage(filename: entry.imageFilename) {
+        if let image = fullImage ?? thumbnailImage {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFit()
                 .frame(maxWidth: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
+
+            if fullImage == nil {
+                Text("Showing thumbnail while full image syncs.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         } else {
             ContentUnavailableView(
                 "Image Not Found",
@@ -127,6 +139,15 @@ struct EntryDetailView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(!hasLoggedAtChanges)
+
+                if entry.photoAsset?.state == .failed {
+                    Button("Retry Photo Sync") {
+                        Task {
+                            await photoSyncService.retryAsset(entryID: entry.id)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                }
             }
         }
     }
@@ -162,5 +183,22 @@ struct EntryDetailView: View {
         } catch {
             deleteErrorMessage = error.localizedDescription
         }
+    }
+
+    private var fullImage: PlatformImage? {
+        if let filename = entry.photoAsset?.fullImageFilename,
+           let image = imageStore.loadImage(filename: filename) {
+            return image
+        }
+
+        return imageStore.loadImage(filename: entry.imageFilename)
+    }
+
+    private var thumbnailImage: PlatformImage? {
+        guard let filename = entry.photoAsset?.thumbnailFilename else {
+            return nil
+        }
+
+        return imageStore.loadImage(filename: filename)
     }
 }

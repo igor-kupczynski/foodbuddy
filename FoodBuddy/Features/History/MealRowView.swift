@@ -29,8 +29,7 @@ struct MealRowView: View {
 
     @ViewBuilder
     private var thumbnail: some View {
-        if let latest = sortedEntries.first,
-           let image = imageStore.loadImage(filename: latest.imageFilename) {
+        if let image = latestThumbnailImage {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFill()
@@ -45,6 +44,24 @@ struct MealRowView: View {
                         .foregroundStyle(.secondary)
                 }
         }
+    }
+
+    private var latestThumbnailImage: PlatformImage? {
+        guard let latest = sortedEntries.first else {
+            return nil
+        }
+
+        if let thumbnailFilename = latest.photoAsset?.thumbnailFilename,
+           let image = imageStore.loadImage(filename: thumbnailFilename) {
+            return image
+        }
+
+        if let fullFilename = latest.photoAsset?.fullImageFilename,
+           let image = imageStore.loadImage(filename: fullFilename) {
+            return image
+        }
+
+        return imageStore.loadImage(filename: latest.imageFilename)
     }
 
     private var sortedEntries: [MealEntry] {

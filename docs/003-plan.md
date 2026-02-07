@@ -187,24 +187,24 @@ Last updated: 2026-02-07
 
 ### Milestone Status
 
-- M1 Photo asset model + migration wiring: `Pending`
-- M2 Preprocessing pipeline: `Pending`
-- M3 Upload pipeline: `Pending`
-- M4 Download and hydration: `Pending`
-- M5 Diagnostics and recovery UX: `Pending`
-- M6 Performance and hardening: `Pending`
+- M1 Photo asset model + migration wiring: `Completed`
+- M2 Preprocessing pipeline: `Completed`
+- M3 Upload pipeline: `Completed`
+- M4 Download and hydration: `Completed`
+- M5 Diagnostics and recovery UX: `Completed`
+- M6 Performance and hardening: `Completed`
 
 ### Active Task Log
 
-- [Pending] M1.1 Add `EntryPhotoAsset` model and relationships.
-- [Pending] M1.2 Add local-photo migration/bootstrap behavior.
-- [Pending] M2.1 Implement resize/compress pipeline.
-- [Pending] M2.2 Implement thumbnail generation and cache writes.
-- [Pending] M3.1 Implement upload queue and worker.
-- [Pending] M3.2 Implement retry/backoff + error persistence.
-- [Pending] M4.1 Implement missing-asset download queue.
-- [Pending] M4.2 Implement progressive render state updates.
-- [Pending] M5.1 Implement sync diagnostics screen/section.
-- [Pending] M5.2 Add user-triggered retry actions.
-- [Pending] M6.1 Add preprocessing/state-machine automated tests.
-- [Pending] M6.2 Add sync recovery integration tests.
+- [Completed] M1.1 Add `EntryPhotoAsset` model and relationships.
+- [Completed] M1.2 Add local-photo migration/bootstrap behavior.
+- [Completed] M2.1 Implement resize/compress pipeline.
+- [Completed] M2.2 Implement thumbnail generation and cache writes.
+- [Completed] M3.1 Implement upload queue and worker.
+- [Completed] M3.2 Implement retry/backoff + error persistence.
+- [Completed] M4.1 Implement missing-asset download queue.
+- [Completed] M4.2 Implement progressive render state updates.
+- [Completed] M5.1 Implement sync diagnostics screen/section.
+- [Completed] M5.2 Add user-triggered retry actions.
+- [Completed] M6.1 Add preprocessing/state-machine automated tests.
+- [Completed] M6.2 Add sync recovery integration tests.

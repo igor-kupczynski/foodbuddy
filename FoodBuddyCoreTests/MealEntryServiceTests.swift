@@ -22,6 +22,8 @@ final class MealEntryServiceTests: XCTestCase {
         XCTAssertEqual(rows.count, 1)
         XCTAssertEqual(rows[0].id, entry.id)
         XCTAssertEqual(rows[0].mealId, entry.mealId)
+        XCTAssertEqual(rows[0].photoAsset?.state, .pending)
+        XCTAssertNotNil(rows[0].photoAsset?.thumbnailFilename)
         XCTAssertTrue(FileManager.default.fileExists(atPath: harness.imageStore.url(for: entry.imageFilename).path))
     }
 
@@ -174,7 +176,7 @@ private final class TestHarness {
 
     static func make() throws -> TestHarness {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let schema = Schema([Meal.self, MealEntry.self, MealType.self])
+        let schema = Schema([Meal.self, MealEntry.self, EntryPhotoAsset.self, MealType.self])
         let container = try ModelContainer(for: schema, configurations: config)
         let context = ModelContext(container)
 

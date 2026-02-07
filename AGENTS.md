@@ -3,7 +3,7 @@
 ## Working Rules
 
 - Keep `AGENTS.md` and `README.md` up to date throughout implementation work.
-- Treat `docs/002-plan.md` as the active/implemented baseline until 003 work starts.
+- Treat `docs/003-plan.md` as the active/implemented baseline until 004 work starts.
 - Keep a current `Development Requirements` section in `README.md` (tooling, versions, setup commands).
 - Keep `README.md` run guidance concise and current for local automated tests, simulator runs, and physical iPhone runs.
 - For any active plan document, mark tasks `In Progress` when started.

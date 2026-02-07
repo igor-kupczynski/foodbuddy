@@ -13,17 +13,22 @@ struct HistoryView: View {
     @Query(sort: [SortDescriptor(\MealType.displayName)])
     private var mealTypes: [MealType]
 
+    @Query(sort: [SortDescriptor(\EntryPhotoAsset.updatedAt, order: .reverse)])
+    private var photoAssets: [EntryPhotoAsset]
+
     @State private var isShowingCaptureSource = false
     @State private var isShowingCamera = false
     @State private var isShowingLibraryPicker = false
     @State private var isShowingMealTypeChooser = false
     @State private var isShowingMealTypeManagement = false
+    @State private var isShowingSyncDiagnostics = false
 
     @State private var pendingImage: PlatformImage?
     @State private var pendingLoggedAt = Date.now
     @State private var selectedMealTypeID: UUID?
 
     @State private var hasBootstrappedMealTypes = false
+    @State private var isRunningPhotoSync = false
     @State private var ingestErrorMessage: String?
 
     private var imageStore: ImageStore {
@@ -32,6 +37,10 @@ struct HistoryView: View {
 
     private var service: MealEntryService {
         Dependencies.makeMealEntryService(modelContext: modelContext)
+    }
+
+    private var photoSyncService: PhotoSyncService {
+        Dependencies.makePhotoSyncService(modelContext: modelContext, syncStatus: syncStatus)
     }
 
     private var isShowingIngestError: Binding<Bool> {
@@ -65,7 +74,8 @@ struct HistoryView: View {
                     NavigationLink {
                         MealDetailView(
                             meal: meal,
-                            mealTypeName: mealTypeName(for: meal)
+                            mealTypeName: mealTypeName(for: meal),
+                            syncStatus: syncStatus
                         )
                     } label: {
                         MealRowView(
@@ -101,6 +111,8 @@ struct HistoryView: View {
                     ingestErrorMessage = error.localizedDescription
                 }
             }
+
+            await runPhotoSyncCycle()
         }
         .confirmationDialog("Add Meal", isPresented: $isShowingCaptureSource, titleVisibility: .visible) {
             Button(CaptureSource.camera.title) {
@@ -148,6 +160,11 @@ struct HistoryView: View {
                 MealTypeManagementView()
             }
         }
+        .sheet(isPresented: $isShowingSyncDiagnostics) {
+            NavigationStack {
+                PhotoSyncDiagnosticsView(syncStatus: syncStatus)
+            }
+        }
         .alert("Could Not Save Entry", isPresented: isShowingIngestError, actions: {
             Button("OK", role: .cancel) {}
         }, message: {
@@ -162,6 +179,25 @@ struct HistoryView: View {
             Text(syncStatus.detail)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            Text(photoSyncSummaryText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 12) {
+                Button("Photo Sync Details") {
+                    isShowingSyncDiagnostics = true
+                }
+                .buttonStyle(.bordered)
+
+                if failedPhotoSyncCount > 0 {
+                    Button("Retry Failed") {
+                        Task {
+                            await photoSyncService.retryFailedNow()
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
         }
         .padding(.vertical, 4)
     }
@@ -204,6 +240,9 @@ struct HistoryView: View {
                 loggedAt: pendingLoggedAt
             )
             clearPendingCapture()
+            Task {
+                await runPhotoSyncCycle()
+            }
         } catch {
             ingestErrorMessage = error.localizedDescription
         }
@@ -214,11 +253,33 @@ struct HistoryView: View {
         selectedMealTypeID = nil
         isShowingMealTypeChooser = false
     }
+
+    private var failedPhotoSyncCount: Int {
+        photoAssets.filter { $0.state == .failed }.count
+    }
+
+    private var photoSyncSummaryText: String {
+        let pending = photoAssets.filter { $0.state == .pending }.count
+        let failed = photoAssets.filter { $0.state == .failed }.count
+        let uploaded = photoAssets.filter { $0.state == .uploaded }.count
+
+        return "Photos: \(uploaded) synced, \(pending) pending, \(failed) failed"
+    }
+
+    private func runPhotoSyncCycle() async {
+        if isRunningPhotoSync {
+            return
+        }
+
+        isRunningPhotoSync = true
+        defer { isRunningPhotoSync = false }
+        await photoSyncService.runSyncCycle()
+    }
 }
 
 #Preview {
     NavigationStack {
         HistoryView(syncStatus: .cloudEnabled)
-            .modelContainer(for: [Meal.self, MealEntry.self, MealType.self], inMemory: true)
+            .modelContainer(for: [Meal.self, MealEntry.self, MealType.self, EntryPhotoAsset.self], inMemory: true)
     }
 }

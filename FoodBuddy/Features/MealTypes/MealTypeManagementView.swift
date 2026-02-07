@@ -110,6 +110,6 @@ struct MealTypeManagementView: View {
 #Preview {
     NavigationStack {
         MealTypeManagementView()
-            .modelContainer(for: [Meal.self, MealEntry.self, MealType.self], inMemory: true)
+            .modelContainer(for: [Meal.self, MealEntry.self, MealType.self, EntryPhotoAsset.self], inMemory: true)
     }
 }

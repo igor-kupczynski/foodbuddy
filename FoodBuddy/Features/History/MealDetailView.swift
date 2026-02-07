@@ -6,6 +6,7 @@ struct MealDetailView: View {
 
     let meal: Meal
     let mealTypeName: String
+    let syncStatus: SyncStatus
 
     @State private var errorMessage: String?
 
@@ -40,7 +41,7 @@ struct MealDetailView: View {
             } else {
                 ForEach(sortedEntries) { entry in
                     NavigationLink {
-                        EntryDetailView(entry: entry)
+                        EntryDetailView(entry: entry, syncStatus: syncStatus)
                     } label: {
                         EntryRowView(entry: entry, imageStore: imageStore)
                     }

@@ -22,6 +22,7 @@ final class MealEntryService: MealEntryIngesting {
 
     private let modelContext: ModelContext
     private let imageStore: ImageStore
+    private let imagePreprocessor: ImagePreprocessor
     private let mealService: MealService
     private let mealTypeService: MealTypeService
     private let nowProvider: () -> Date
@@ -30,6 +31,7 @@ final class MealEntryService: MealEntryIngesting {
     init(
         modelContext: ModelContext,
         imageStore: ImageStore,
+        imagePreprocessor: ImagePreprocessor = ImagePreprocessor(),
         mealService: MealService? = nil,
         mealTypeService: MealTypeService? = nil,
         nowProvider: @escaping () -> Date = Date.init,
@@ -37,6 +39,7 @@ final class MealEntryService: MealEntryIngesting {
     ) {
         self.modelContext = modelContext
         self.imageStore = imageStore
+        self.imagePreprocessor = imagePreprocessor
         self.nowProvider = nowProvider
         self.uuidProvider = uuidProvider
         self.mealService = mealService ?? MealService(
@@ -85,7 +88,10 @@ final class MealEntryService: MealEntryIngesting {
     func ingest(image: PlatformImage, mealTypeID: UUID, loggedAt: Date) throws -> MealEntry {
         let now = nowProvider()
         let capturedAt = now
-        let imageFilename = try imageStore.saveJPEG(image)
+
+        let processed = try imagePreprocessor.preprocess(image)
+        let imageFilename = try imageStore.saveJPEGData(processed.fullJPEGData)
+        let thumbnailFilename = try imageStore.saveJPEGData(processed.thumbnailJPEGData)
 
         do {
             guard let mealType = try mealTypeService.fetchType(id: mealTypeID) else {
@@ -104,11 +110,26 @@ final class MealEntryService: MealEntryIngesting {
                 updatedAt: now,
                 meal: meal
             )
+
+            let photoAsset = EntryPhotoAsset(
+                id: entry.id,
+                entryId: entry.id,
+                fullImageFilename: imageFilename,
+                thumbnailFilename: thumbnailFilename,
+                state: .pending,
+                updatedAt: now,
+                entry: entry
+            )
+            entry.photoAsset = photoAsset
+            entry.photoAssetId = photoAsset.id
+
+            modelContext.insert(photoAsset)
             modelContext.insert(entry)
             try save()
             return entry
         } catch {
             try? imageStore.deleteImage(filename: imageFilename)
+            try? imageStore.deleteImage(filename: thumbnailFilename)
             throw error
         }
     }
@@ -120,7 +141,16 @@ final class MealEntryService: MealEntryIngesting {
         } else {
             meal = try mealService.fetchMeal(id: entry.mealId)
         }
-        try imageStore.deleteImage(filename: entry.imageFilename)
+        let filesToDelete = Set([
+            entry.imageFilename,
+            entry.photoAsset?.fullImageFilename,
+            entry.photoAsset?.thumbnailFilename
+        ].compactMap { $0 })
+
+        for filename in filesToDelete {
+            try imageStore.deleteImage(filename: filename)
+        }
+
         modelContext.delete(entry)
 
         if let meal {

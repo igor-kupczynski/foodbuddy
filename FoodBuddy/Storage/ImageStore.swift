@@ -29,24 +29,36 @@ struct ImageStore {
     }
 
     func saveJPEG(_ image: PlatformImage) throws -> String {
-        try ensureDirectoryExists()
-
         guard let data = image.foodBuddyJPEGData(compressionQuality: compressionQuality) else {
             throw Error.imageEncodingFailed
         }
 
-        let filename = "\(uuidProvider().uuidString).jpg"
+        return try saveJPEGData(data)
+    }
+
+    func saveJPEGData(_ data: Data, preferredFilename: String? = nil) throws -> String {
+        try ensureDirectoryExists()
+
+        let filename = preferredFilename ?? "\(uuidProvider().uuidString).jpg"
         let destination = url(for: filename)
         try data.write(to: destination, options: .atomic)
         return filename
     }
 
     func loadImage(filename: String) -> PlatformImage? {
-        let imageURL = url(for: filename)
-        guard let data = try? Data(contentsOf: imageURL) else {
+        guard let data = loadData(filename: filename) else {
             return nil
         }
         return PlatformImage.fromFoodBuddyData(data)
+    }
+
+    func loadData(filename: String) -> Data? {
+        let imageURL = url(for: filename)
+        return try? Data(contentsOf: imageURL)
+    }
+
+    func fileExists(filename: String) -> Bool {
+        fileManager.fileExists(atPath: url(for: filename).path)
     }
 
     func deleteImage(filename: String) throws {
