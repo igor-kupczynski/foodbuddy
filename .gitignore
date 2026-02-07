@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+
+# Xcode user data
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+
+# Per-user project/workspace data
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# Xcode and Swift build artifacts
+DerivedData/
+.build/
+
+# SwiftPM
+.swiftpm/
+Package.resolved
+
+# Logs and temp
+*.log
+*.tmp
+
+# Editor / tooling
+.vscode/
+.idea/
