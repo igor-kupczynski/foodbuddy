@@ -144,6 +144,127 @@ final class MealEntryServiceTests: XCTestCase {
         XCTAssertFalse(names.contains("Breakfast"))
     }
 
+    func testReassignMealTypeMovesEntryToExistingDestinationMeal() throws {
+        let harness = try TestHarness.make()
+        defer { harness.cleanup() }
+
+        let service = harness.makeService(nowDates: [
+            Date(timeIntervalSince1970: 100),
+            Date(timeIntervalSince1970: 200),
+            Date(timeIntervalSince1970: 300)
+        ])
+        try service.bootstrapMealTypesIfNeeded()
+
+        let breakfast = try XCTUnwrap(try mealType(named: "Breakfast", service: service))
+        let lunch = try XCTUnwrap(try mealType(named: "Lunch", service: service))
+
+        let breakfastEntry = try service.ingest(
+            image: TestImageFactory.make(color: .systemPink),
+            mealTypeID: breakfast.id,
+            loggedAt: makeDate(dayOffset: 0, hour: 8, minute: 0)
+        )
+        let lunchEntry = try service.ingest(
+            image: TestImageFactory.make(color: .systemBrown),
+            mealTypeID: lunch.id,
+            loggedAt: makeDate(dayOffset: 0, hour: 12, minute: 0)
+        )
+        let sourceMealID = breakfastEntry.mealId
+
+        let result = try service.reassignMealType(entry: breakfastEntry, to: lunch.id)
+        let meals = try harness.fetchMeals()
+
+        XCTAssertEqual(result, .moved)
+        XCTAssertEqual(breakfastEntry.mealId, lunchEntry.mealId)
+        XCTAssertFalse(meals.contains(where: { $0.id == sourceMealID }))
+        XCTAssertEqual(meals.first(where: { $0.id == lunchEntry.mealId })?.entries.count, 2)
+    }
+
+    func testReassignMealTypeCreatesDestinationMealWhenMissing() throws {
+        let harness = try TestHarness.make()
+        defer { harness.cleanup() }
+
+        let service = harness.makeService(nowDates: [
+            Date(timeIntervalSince1970: 100),
+            Date(timeIntervalSince1970: 200)
+        ])
+        try service.bootstrapMealTypesIfNeeded()
+
+        let breakfast = try XCTUnwrap(try mealType(named: "Breakfast", service: service))
+        let dinner = try XCTUnwrap(try mealType(named: "Dinner", service: service))
+
+        let entry = try service.ingest(
+            image: TestImageFactory.make(color: .systemOrange),
+            mealTypeID: breakfast.id,
+            loggedAt: makeDate(dayOffset: 0, hour: 8, minute: 30)
+        )
+
+        XCTAssertFalse(try harness.fetchMeals().contains(where: { $0.typeId == dinner.id }))
+
+        let result = try service.reassignMealType(entry: entry, to: dinner.id)
+        let meals = try harness.fetchMeals()
+
+        XCTAssertEqual(result, .moved)
+        XCTAssertEqual(meals.count, 1)
+        XCTAssertEqual(meals.first?.typeId, dinner.id)
+        XCTAssertEqual(meals.first?.entries.first?.id, entry.id)
+    }
+
+    func testReassignMealTypeDeletesSourceMealWhenEmpty() throws {
+        let harness = try TestHarness.make()
+        defer { harness.cleanup() }
+
+        let service = harness.makeService(nowDates: [
+            Date(timeIntervalSince1970: 100),
+            Date(timeIntervalSince1970: 200),
+            Date(timeIntervalSince1970: 300)
+        ])
+        try service.bootstrapMealTypesIfNeeded()
+
+        let breakfast = try XCTUnwrap(try mealType(named: "Breakfast", service: service))
+        let lunch = try XCTUnwrap(try mealType(named: "Lunch", service: service))
+
+        let entry = try service.ingest(
+            image: TestImageFactory.make(color: .systemTeal),
+            mealTypeID: breakfast.id,
+            loggedAt: makeDate(dayOffset: 0, hour: 8, minute: 0)
+        )
+        _ = try service.ingest(
+            image: TestImageFactory.make(color: .systemIndigo),
+            mealTypeID: lunch.id,
+            loggedAt: makeDate(dayOffset: 0, hour: 12, minute: 0)
+        )
+
+        let sourceMealID = entry.mealId
+
+        _ = try service.reassignMealType(entry: entry, to: lunch.id)
+        let meals = try harness.fetchMeals()
+
+        XCTAssertFalse(meals.contains(where: { $0.id == sourceMealID }))
+    }
+
+    func testReassignMealTypeSameTypeIsNoOp() throws {
+        let harness = try TestHarness.make()
+        defer { harness.cleanup() }
+
+        let service = harness.makeService(nowDates: [Date(timeIntervalSince1970: 100)])
+        try service.bootstrapMealTypesIfNeeded()
+        let breakfast = try XCTUnwrap(try mealType(named: "Breakfast", service: service))
+
+        let entry = try service.ingest(
+            image: TestImageFactory.make(color: .systemMint),
+            mealTypeID: breakfast.id,
+            loggedAt: makeDate(dayOffset: 0, hour: 8, minute: 0)
+        )
+        let originalMealID = entry.mealId
+        let originalUpdatedAt = entry.updatedAt
+
+        let result = try service.reassignMealType(entry: entry, to: breakfast.id)
+
+        XCTAssertEqual(result, .noChange)
+        XCTAssertEqual(entry.mealId, originalMealID)
+        XCTAssertEqual(entry.updatedAt, originalUpdatedAt)
+    }
+
     func testCameraAndLibraryIngestUseSharedIngestMethod() throws {
         let spy = IngestSpy()
         let coordinator = CaptureIngestCoordinator(ingestService: spy)

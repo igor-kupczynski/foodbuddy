@@ -13,6 +13,11 @@ enum LoggedAtUpdateResult: Equatable {
     case updatedWithReassignment
 }
 
+enum MealTypeReassignmentResult: Equatable {
+    case noChange
+    case moved
+}
+
 @MainActor
 final class MealEntryService: MealEntryIngesting {
     enum Error: Swift.Error {
@@ -213,6 +218,43 @@ final class MealEntryService: MealEntryIngesting {
         mealService.touch(currentMeal)
         try save()
         return .updatedWithoutReassignment
+    }
+
+    func reassignMealType(entry: MealEntry, to mealTypeID: UUID) throws -> MealTypeReassignmentResult {
+        let resolvedMeal: Meal?
+        if let existingMeal = entry.meal {
+            resolvedMeal = existingMeal
+        } else {
+            resolvedMeal = try mealService.fetchMeal(id: entry.mealId)
+        }
+
+        guard let currentMeal = resolvedMeal else {
+            throw Error.missingMeal
+        }
+
+        guard try mealTypeService.fetchType(id: mealTypeID) != nil else {
+            throw Error.missingMealType
+        }
+
+        if currentMeal.typeId == mealTypeID {
+            return .noChange
+        }
+
+        let destinationMeal = try mealService.meal(for: mealTypeID, loggedAt: entry.loggedAt)
+        if destinationMeal.id == currentMeal.id {
+            return .noChange
+        }
+
+        entry.meal = destinationMeal
+        entry.mealId = destinationMeal.id
+        entry.updatedAt = nowProvider()
+
+        mealService.touch(destinationMeal)
+        mealService.touch(currentMeal)
+        mealService.deleteMealIfEmpty(currentMeal)
+        try save()
+
+        return .moved
     }
 
     @discardableResult

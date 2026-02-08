@@ -11,10 +11,15 @@ struct EntryDetailView: View {
     let syncStatus: SyncStatus
     let onDelete: (() -> Void)?
 
+    @Query(sort: [SortDescriptor(\MealType.displayName)])
+    private var mealTypes: [MealType]
+
     @State private var editedLoggedAt: Date
+    @State private var editedMealTypeID: UUID?
     @State private var isShowingDeleteConfirmation = false
     @State private var isShowingReassignmentConfirmation = false
-    @State private var deleteErrorMessage: String?
+    @State private var isShowingMealTypeReassignmentConfirmation = false
+    @State private var actionErrorMessage: String?
 
     init(
         entry: MealEntry,
@@ -25,6 +30,7 @@ struct EntryDetailView: View {
         self.syncStatus = syncStatus
         self.onDelete = onDelete
         _editedLoggedAt = State(initialValue: entry.loggedAt)
+        _editedMealTypeID = State(initialValue: entry.meal?.typeId)
     }
 
     private var imageStore: ImageStore {
@@ -41,13 +47,24 @@ struct EntryDetailView: View {
 
     private var isShowingDeleteError: Binding<Bool> {
         Binding(
-            get: { deleteErrorMessage != nil },
+            get: { actionErrorMessage != nil },
             set: { newValue in
                 if !newValue {
-                    deleteErrorMessage = nil
+                    actionErrorMessage = nil
                 }
             }
         )
+    }
+
+    private var currentMealTypeID: UUID? {
+        entry.meal?.typeId
+    }
+
+    private var hasMealTypeChanges: Bool {
+        guard let currentMealTypeID, let editedMealTypeID else {
+            return false
+        }
+        return currentMealTypeID != editedMealTypeID
     }
 
     private var shouldUseTwoColumnLayout: Bool {
@@ -93,11 +110,31 @@ struct EntryDetailView: View {
         } message: {
             Text("This date/time change moves the entry into a different meal grouping.")
         }
+        .alert("Move Entry to Another Meal Type?", isPresented: $isShowingMealTypeReassignmentConfirmation) {
+            Button("Move", role: .destructive) {
+                applyMealTypeUpdate()
+            }
+            Button("Cancel", role: .cancel) {
+                editedMealTypeID = currentMealTypeID
+            }
+        } message: {
+            Text("This keeps date/time unchanged and reassigns the entry to a different meal type.")
+        }
         .alert("Could Not Save Changes", isPresented: isShowingDeleteError, actions: {
             Button("OK", role: .cancel) {}
         }, message: {
-            Text(deleteErrorMessage ?? "Unknown error")
+            Text(actionErrorMessage ?? "Unknown error")
         })
+        .onAppear {
+            if editedMealTypeID == nil {
+                editedMealTypeID = currentMealTypeID ?? mealTypes.first?.id
+            }
+        }
+        .onChange(of: currentMealTypeID) { _, newValue in
+            if !hasMealTypeChanges {
+                editedMealTypeID = newValue ?? mealTypes.first?.id
+            }
+        }
     }
 
     private var regularContent: some View {
@@ -159,6 +196,30 @@ struct EntryDetailView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 8) {
+                Text("Meal Type")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if mealTypes.isEmpty {
+                    Text("No meal types available")
+                        .foregroundStyle(.secondary)
+                } else {
+                    Picker("Meal Type", selection: selectedMealTypeBinding) {
+                        ForEach(mealTypes) { type in
+                            Text(type.displayName).tag(type.id)
+                        }
+                    }
+                    .labelsHidden()
+
+                    Button("Save Meal Type") {
+                        isShowingMealTypeReassignmentConfirmation = true
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!hasMealTypeChanges)
+                }
+
+                Divider()
+
                 Text("Logged At")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -221,8 +282,27 @@ struct EntryDetailView: View {
                 isShowingReassignmentConfirmation = true
             }
         } catch {
-            deleteErrorMessage = error.localizedDescription
+            actionErrorMessage = error.localizedDescription
             editedLoggedAt = entry.loggedAt
+        }
+    }
+
+    private func applyMealTypeUpdate() {
+        guard let selectedMealTypeID = editedMealTypeID else {
+            actionErrorMessage = "Select a meal type before saving."
+            return
+        }
+
+        do {
+            let result = try service.reassignMealType(entry: entry, to: selectedMealTypeID)
+            if result == .noChange {
+                self.editedMealTypeID = currentMealTypeID
+            } else {
+                self.editedMealTypeID = entry.meal?.typeId
+            }
+        } catch {
+            actionErrorMessage = error.localizedDescription
+            self.editedMealTypeID = currentMealTypeID
         }
     }
 
@@ -236,7 +316,7 @@ struct EntryDetailView: View {
                 dismiss()
             }
         } catch {
-            deleteErrorMessage = error.localizedDescription
+            actionErrorMessage = error.localizedDescription
         }
     }
 
@@ -255,5 +335,24 @@ struct EntryDetailView: View {
         }
 
         return imageStore.loadImage(filename: filename)
+    }
+
+    private var selectedMealTypeBinding: Binding<UUID> {
+        Binding(
+            get: {
+                if let editedMealTypeID {
+                    return editedMealTypeID
+                }
+
+                if let currentMealTypeID {
+                    return currentMealTypeID
+                }
+
+                return mealTypes.first?.id ?? UUID()
+            },
+            set: { newValue in
+                editedMealTypeID = newValue
+            }
+        )
     }
 }
