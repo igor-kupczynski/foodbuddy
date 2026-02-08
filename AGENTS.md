@@ -26,7 +26,7 @@
 ## Identifier Baseline
 
 - Keep identifier values explicit and consistent when editing signing/CloudKit settings.
-- Current app target bundle ID in `project.yml`: `com.igorkupczynski.foodbuddy`.
+- Current production app target bundle ID in `project.yml` (`FoodBuddy`): `com.igorkupczynski.foodbuddy`.
+- Current local phone dev target bundle ID in `project.yml` (`FoodBuddyDev`): `info.kupczynski.foodbuddy.dev`.
 - Current test bundle ID in `project.yml`: `com.igorkupczynski.foodbuddy.coretests`.
-- Local phone dev guidance in `README.md` currently suggests overriding app bundle ID to `info.kupczynski.foodbuddy.dev`.
 - Current CloudKit container ID: `iCloud.info.kupczynski.foodbuddy` (must keep `iCloud.` prefix; container IDs are not bundle IDs).

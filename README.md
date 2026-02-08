@@ -94,27 +94,20 @@ Run these checks on an iPad simulator before merge (portrait + landscape where n
 
 ## Run on Your iPhone (Local Install Only)
 
-Recommended first-run path (least friction): local-only mode on your device, no CloudKit entitlement.
+Default local-phone path uses scheme `FoodBuddyDev` (local-only mode, no CloudKit entitlement).
 
-1. In `project.yml`, set local phone signing values:
-
-```yaml
-CODE_SIGNING_ALLOWED: YES
-CODE_SIGNING_REQUIRED: YES
-CODE_SIGN_ENTITLEMENTS:
-```
-
-2. Regenerate/open:
+1. Regenerate/open:
 
 ```bash
 xcodegen generate
 open FoodBuddy.xcodeproj
 ```
 
-3. In Xcode -> target `FoodBuddy` -> Signing & Capabilities:
+2. In Xcode, select scheme `FoodBuddyDev` and your iPhone as destination.
+
+3. In Xcode -> target `FoodBuddyDev` -> Signing & Capabilities:
 - Enable **Automatically manage signing**.
 - Select your Team (Personal Team works for local install).
-- Set bundle ID to `info.kupczynski.foodbuddy.dev`.
 
 4. Enable Developer Mode on iPhone (first time only):
 - Try one run from Xcode first.
@@ -126,9 +119,15 @@ Result: app runs on phone with local metadata fallback (no iCloud sync).
 
 Optional CloudKit-enabled phone run:
 
-1. Restore `CODE_SIGN_ENTITLEMENTS: FoodBuddy/App/FoodBuddy.entitlements`.
-2. Keep Team/bundle ID consistent with your iCloud container setup.
-3. If you change container from `iCloud.info.kupczynski.foodbuddy`, update:
+1. In `project.yml` under target `FoodBuddyDev`, set:
+
+```yaml
+CODE_SIGN_ENTITLEMENTS: FoodBuddy/App/FoodBuddy.entitlements
+```
+
+2. Run `xcodegen generate`.
+3. Keep Team/bundle ID consistent with your iCloud container setup.
+4. If you change container from `iCloud.info.kupczynski.foodbuddy`, update:
 - `FoodBuddy/App/FoodBuddy.entitlements`
 - `FoodBuddy/Support/Dependencies.swift`
 - `FoodBuddy/Support/PersistenceController.swift`

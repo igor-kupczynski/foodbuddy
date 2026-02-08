@@ -19,8 +19,8 @@ If these do not align, install fails, launch fails, or cloud APIs fail at runtim
 
 Current repo baseline:
 
-1. App target bundle ID in `project.yml`: `com.igorkupczynski.foodbuddy`.
-2. Local phone dev guidance in `README.md`: override bundle ID to `info.kupczynski.foodbuddy.dev`.
+1. Production app target bundle ID (`FoodBuddy`) in `project.yml`: `com.igorkupczynski.foodbuddy`.
+2. Local phone dev target bundle ID (`FoodBuddyDev`) in `project.yml`: `info.kupczynski.foodbuddy.dev`.
 3. CloudKit container ID: `iCloud.info.kupczynski.foodbuddy`.
 
 CloudKit container references in this repo:
@@ -40,8 +40,9 @@ Rules:
 Local-only phone debugging (fastest path):
 
 - Team: Personal Team or org team.
+- Target/scheme: `FoodBuddyDev`.
 - Signing: automatic in Xcode.
-- Entitlements: none (set `CODE_SIGN_ENTITLEMENTS:` blank for local-only mode in this repo).
+- Entitlements: none by default in `FoodBuddyDev` (`CODE_SIGN_ENTITLEMENTS:` blank).
 - Outcome: app installs quickly; CloudKit is disabled; metadata falls back locally.
 
 CloudKit-enabled phone debugging:
@@ -100,8 +101,8 @@ If Developer Mode toggle is missing, step 2 is usually the missing prerequisite.
 Recommended flow for this repo:
 
 1. Local dev (Debug):
-   - Use dev bundle ID (`info.kupczynski.foodbuddy.dev`) for phone debugging.
-   - Start with local-only mode (blank entitlements) to unblock install/run quickly.
+   - Use target/scheme `FoodBuddyDev` for phone debugging.
+   - `FoodBuddyDev` keeps local-only mode by default (blank entitlements) to unblock install/run quickly.
    - Enable CloudKit entitlements when you need cloud behavior validation.
 2. Pre-beta hardening:
    - Switch to release identity (production bundle ID for distribution app record).
@@ -149,10 +150,10 @@ Operational guidance:
 
 For "just run on my phone now":
 
-1. Use bundle ID `info.kupczynski.foodbuddy.dev` in Xcode Signing.
-2. Keep signing automatic with your Team.
-3. Clear entitlements (`CODE_SIGN_ENTITLEMENTS:` blank).
-4. Run `xcodegen generate`.
+1. Run `xcodegen generate`.
+2. Open `FoodBuddy.xcodeproj`.
+3. Select scheme `FoodBuddyDev`.
+4. In target `FoodBuddyDev`, keep signing automatic with your Team.
 5. Run from Xcode on iPhone.
 
 Then re-enable CloudKit entitlements only when you specifically need CloudKit validation.

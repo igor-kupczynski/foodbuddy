@@ -30,6 +30,29 @@ targets:
         CODE_SIGNING_ALLOWED: NO
         CODE_SIGNING_REQUIRED: NO
 
+  FoodBuddyDev:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: FoodBuddy
+    info:
+      path: FoodBuddy/App/Info.plist
+      properties:
+        NSCameraUsageDescription: FoodBuddy needs camera access to capture meal photos.
+        NSPhotoLibraryUsageDescription: FoodBuddy needs photo library access to import meal photos.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: info.kupczynski.foodbuddy.dev
+        PRODUCT_NAME: FoodBuddy Dev
+        INFOPLIST_FILE: FoodBuddy/App/Info.plist
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: YES
+        CODE_SIGN_ENTITLEMENTS:
+        CODE_SIGNING_ALLOWED: YES
+        CODE_SIGNING_REQUIRED: YES
+        DEVELOPMENT_TEAM:
+
   FoodBuddyCoreTests:
     type: bundle.unit-test
     platform: macOS
@@ -54,6 +77,18 @@ schemes:
     build:
       targets:
         FoodBuddy: all
+        FoodBuddyCoreTests: [test]
+    test:
+      gatherCoverageData: false
+      targets:
+        - name: FoodBuddyCoreTests
+    run:
+      config: Debug
+
+  FoodBuddyDev:
+    build:
+      targets:
+        FoodBuddyDev: all
         FoodBuddyCoreTests: [test]
     test:
       gatherCoverageData: false
