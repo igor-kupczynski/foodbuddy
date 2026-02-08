@@ -192,18 +192,19 @@ Last updated: 2026-02-08
 
 ### Milestone Status
 
-- M1 Viewport compatibility fix: `Planned`
-- M2 Capture presentation hardening: `Planned`
-- M3 Entry meal-type reassignment feature: `Planned`
-- M4 Automation and regression guardrails: `Planned`
-- M5 Verification + docs: `Planned`
+- M1 Viewport compatibility fix: `Completed`
+- M2 Capture presentation hardening: `Completed`
+- M3 Entry meal-type reassignment feature: `Completed`
+- M4 Automation and regression guardrails: `Completed`
+- M5 Verification + docs: `In Progress`
 
 ### Active Task Log
 
 - [Completed] M0.1 Document 005 root causes and remediation strategy.
-- [Planned] M1.1 Add launch screen configuration and verify generated settings.
-- [Planned] M2.1 Harden capture presentation sequencing.
-- [Planned] M3.1 Add entry detail meal-type move action and service support.
-- [Planned] M4.1 Add launch-screen config assertion automation.
-- [Planned] M4.2 Add mock-camera UI regression test for capture presentation.
-- [Planned] M5.1 Run verifier and record physical iPhone smoke results.
+- [Completed] M1.1 Add launch screen configuration and verify generated settings.
+- [Completed] M2.1 Harden capture presentation sequencing.
+- [Completed] M3.1 Add entry detail meal-type move action and service support.
+- [Completed] M4.1 Add launch-screen config assertion automation.
+- [Completed] M4.2 Add mock-camera UI regression test for capture presentation.
+- [Completed] M5.1 Run verifier and record physical iPhone smoke results.
+- [Blocked] M5.2 Execute physical iPhone smoke checklist from section 7 (requires local device/manual run).

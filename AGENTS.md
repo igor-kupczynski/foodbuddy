@@ -3,7 +3,7 @@
 ## Working Rules
 
 - Keep `AGENTS.md` and `README.md` up to date throughout implementation work.
-- Treat `docs/004-plan-ipad-adaptive-ui.md` as the active plan baseline (with `docs/003-plan-photo-sync-reliability.md` as implemented reference).
+- Treat `docs/005-plan-viewport-capture-reassignment.md` as the active plan baseline (with `docs/004-plan-ipad-adaptive-ui.md` as implemented reference).
 - Keep a current `Development Requirements` section in `README.md` (tooling, versions, setup commands).
 - Keep `README.md` run guidance concise and current for local automated tests, simulator runs, and physical iPhone runs.
 - For any active plan document, mark tasks `In Progress` when started.
@@ -17,7 +17,8 @@
 - Before coding: run `xcodegen generate` to sync `FoodBuddy.xcodeproj` from `project.yml`.
 - Metadata sync baseline is SwiftData + CloudKit private DB with local fallback; preserve this behavior unless the active plan says otherwise.
 - Fast local verifier: run `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64'` (pipe to `xcbeautify` if installed).
-- Iteration 004 pre-merge gate: complete `docs/004-plan-ipad-adaptive-ui.md` section 9 iPad manual smoke checklist and record pass/fail notes.
+- Iteration 005 automated gate: run `./scripts/assert-launch-screen-config.sh` and `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddyUITests -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:FoodBuddyUITests/CapturePresentationUITests/testTakePhotoPresentsFullWindowMockCameraAndAllowsCancel`.
+- Iteration 005 manual gate: complete `docs/005-plan-viewport-capture-reassignment.md` section 7 physical iPhone smoke checks and re-run `docs/004-plan-ipad-adaptive-ui.md` section 9 iPad smoke checklist; record pass/fail notes.
 - Simulator run: open `FoodBuddy.xcodeproj`, select `FoodBuddy` scheme + iOS simulator, then `Cmd+R`.
 - Physical iPhone run: follow the deterministic local phone flow in `README.md` and use `docs/APPLE_DEV_BASICS.md` for signing/capability background and troubleshooting.
 - When changing behavior, update/add tests first or in the same change and keep verifier green before finalizing.

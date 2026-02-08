@@ -5,8 +5,8 @@ FoodBuddy is an iOS meal logger with meal-first history, editable meal timestamp
 ## Current Status
 
 Iteration `003` from `docs/003-plan-photo-sync-reliability.md` is complete.
-Iteration `004` implementation is active in `docs/004-plan-ipad-adaptive-ui.md` (iPad readiness + adaptive UI); manual iPad smoke validation remains required before merge.
-Iteration `005` is drafted in `docs/005-plan-viewport-capture-reassignment.md` to address iPhone viewport/camera presentation regressions and add automated guardrails.
+Iteration `004` from `docs/004-plan-ipad-adaptive-ui.md` is implemented (adaptive iPad layout + split navigation).
+Iteration `005` implementation is active in `docs/005-plan-viewport-capture-reassignment.md` (viewport/capture reliability + meal-type reassignment); physical iPhone smoke validation remains required before merge.
 
 Implemented features:
 
@@ -23,6 +23,9 @@ Implemented features:
 - CloudKit-backed photo asset store integration and sync diagnostics UI with manual retry controls.
 - Adaptive navigation shell: `NavigationStack` on compact width and `NavigationSplitView` on regular width.
 - Regular-width `EntryDetailView` two-column layout (image/content pane + metadata/actions pane).
+- Launch-screen metadata enforcement to prevent compatibility viewport/letterboxing regressions.
+- Hardened Add -> Take Photo presentation handoff and mock-camera capture seam for UI tests.
+- Entry detail meal-type reassignment flow with confirmation and service-level reassignment invariants.
 - Automated verifier covering preprocessing bounds, ingest-to-pending queue behavior, upload state transitions, retry recovery, and hydration.
 
 ## Development Requirements
@@ -59,11 +62,17 @@ gh --version
 # Regenerate project from project.yml
 xcodegen generate
 
+# Guardrail: fail fast if launch-screen metadata is missing
+./scripts/assert-launch-screen-config.sh
+
 # Fast verifier tests (no iOS simulator required)
 xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64' | xcbeautify
+
+# Capture presentation UI regression test (mock camera path)
+xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddyUITests -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:FoodBuddyUITests/CapturePresentationUITests/testTakePhotoPresentsFullWindowMockCameraAndAllowsCancel | xcbeautify
 ```
 
-If `xcbeautify` is not installed, run the same `xcodebuild test` command without the pipe.
+If `xcbeautify` is not installed, run the same `xcodebuild test` commands without the pipe.
 
 ## Run on iOS Simulator
 
@@ -82,7 +91,7 @@ Notes:
 - Camera is usually unavailable in simulator; use **Choose from Library**.
 - Drag image files into the simulator Photos app to seed test data.
 
-## iPad Smoke Validation (Required for 004)
+## iPad Smoke Validation (Required Pre-Merge)
 
 Run these checks on an iPad simulator before merge (portrait + landscape where noted):
 
@@ -92,6 +101,8 @@ Run these checks on an iPad simulator before merge (portrait + landscape where n
 4. Open **Photo Sync Details** and **Meal Types** from toolbar.
 5. Complete one **Choose from Library** ingest flow end-to-end.
 6. Trigger **Retry Photo Sync** on a failed asset (or verify retry control is hidden when no failures exist).
+
+For 005 merges, re-run this checklist after iPhone viewport/capture changes.
 
 ## Run on Your iPhone (Local Install Only)
 
@@ -117,6 +128,12 @@ open FoodBuddy.xcodeproj
 5. Select your iPhone as destination and press `Cmd+R`.
 
 Result: app runs on phone with local metadata fallback (no iCloud sync).
+
+005 physical iPhone smoke checks (required before merge):
+
+1. Launch in portrait and verify no black bars / compatibility viewport.
+2. Run `Add -> Take Photo` in portrait and landscape; verify full visible camera UI and cancel path.
+3. Open an existing entry, change meal type, save, and verify history grouping updates.
 
 Optional CloudKit-enabled phone run:
 
@@ -146,6 +163,7 @@ FoodBuddy/
   Storage/
   Support/
 FoodBuddyCoreTests/
+FoodBuddyUITests/
 docs/
 ```
 
