@@ -126,11 +126,11 @@ struct HistoryView: View {
             }
             .confirmationDialog("Add Meal", isPresented: $isShowingCaptureSource, titleVisibility: .visible) {
                 Button(CaptureSource.camera.title) {
-                    activeCaptureSource = .camera
+                    queueCapturePresentation(for: .camera)
                 }
 
                 Button(CaptureSource.library.title) {
-                    activeCaptureSource = .library
+                    queueCapturePresentation(for: .library)
                 }
 
                 Button("Cancel", role: .cancel) {}
@@ -138,7 +138,11 @@ struct HistoryView: View {
             .fullScreenCover(item: $activeCaptureSource) { source in
                 switch source {
                 case .camera:
-                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                    if AppRuntimeFlags.useMockCameraCapture {
+                        MockCameraCaptureView { image in
+                            beginIngest(with: image)
+                        }
+                    } else if UIImagePickerController.isSourceTypeAvailable(.camera) {
                         CameraPicker { image in
                             beginIngest(with: image)
                         }
@@ -373,6 +377,12 @@ struct HistoryView: View {
 
     private func mealTypeName(for meal: Meal) -> String {
         mealTypes.first(where: { $0.id == meal.typeId })?.displayName ?? "Unknown Meal"
+    }
+
+    private func queueCapturePresentation(for source: CaptureSource) {
+        DispatchQueue.main.async {
+            activeCaptureSource = source
+        }
     }
 
     private func beginIngest(with image: PlatformImage) {

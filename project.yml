@@ -19,6 +19,7 @@ targets:
       properties:
         NSCameraUsageDescription: FoodBuddy needs camera access to capture meal photos.
         NSPhotoLibraryUsageDescription: FoodBuddy needs photo library access to import meal photos.
+        UILaunchScreen: {}
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.igorkupczynski.foodbuddy
@@ -41,6 +42,7 @@ targets:
       properties:
         NSCameraUsageDescription: FoodBuddy needs camera access to capture meal photos.
         NSPhotoLibraryUsageDescription: FoodBuddy needs photo library access to import meal photos.
+        UILaunchScreen: {}
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: info.kupczynski.foodbuddy.dev
@@ -72,6 +74,23 @@ targets:
         CODE_SIGNING_ALLOWED: NO
         CODE_SIGNING_REQUIRED: NO
 
+  FoodBuddyUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: FoodBuddyUITests
+    dependencies:
+      - target: FoodBuddy
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.igorkupczynski.foodbuddy.uitests
+        PRODUCT_NAME: FoodBuddyUITests
+        TEST_TARGET_NAME: FoodBuddy
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGNING_REQUIRED: NO
+
 schemes:
   FoodBuddy:
     build:
@@ -94,5 +113,17 @@ schemes:
       gatherCoverageData: false
       targets:
         - name: FoodBuddyCoreTests
+    run:
+      config: Debug
+
+  FoodBuddyUITests:
+    build:
+      targets:
+        FoodBuddy: all
+        FoodBuddyUITests: [test]
+    test:
+      gatherCoverageData: false
+      targets:
+        - name: FoodBuddyUITests
     run:
       config: Debug

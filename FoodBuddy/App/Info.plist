@@ -22,5 +22,7 @@
 	<string>FoodBuddy needs camera access to capture meal photos.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>FoodBuddy needs photo library access to import meal photos.</string>
+	<key>UILaunchScreen</key>
+	<dict/>
 </dict>
 </plist>
