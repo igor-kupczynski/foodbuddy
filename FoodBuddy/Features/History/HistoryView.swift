@@ -8,6 +8,12 @@ enum HistoryLayoutMode {
 }
 
 struct HistoryView: View {
+    private struct PendingCapture: Identifiable {
+        let id = UUID()
+        let image: PlatformImage
+        let loggedAt: Date
+    }
+
     @Environment(\.modelContext) private var modelContext
 
     let syncStatus: SyncStatus
@@ -27,12 +33,12 @@ struct HistoryView: View {
 
     @State private var isShowingCaptureSource = false
     @State private var activeCaptureSource: CaptureSource?
-    @State private var isShowingMealTypeChooser = false
+    @State private var activeMealTypeCapture: PendingCapture?
+    @State private var stagedCapture: PendingCapture?
+    @State private var shouldShowMealTypeChooserAfterCaptureDismiss = false
     @State private var isShowingMealTypeManagement = false
     @State private var isShowingSyncDiagnostics = false
 
-    @State private var pendingImage: PlatformImage?
-    @State private var pendingLoggedAt = Date.now
     @State private var selectedMealTypeID: UUID?
 
     @State private var hasBootstrappedMealTypes = false
@@ -135,7 +141,7 @@ struct HistoryView: View {
 
                 Button("Cancel", role: .cancel) {}
             }
-            .fullScreenCover(item: $activeCaptureSource) { source in
+            .fullScreenCover(item: $activeCaptureSource, onDismiss: handleCaptureDismissal) { source in
                 switch source {
                 case .camera:
                     if AppRuntimeFlags.useMockCameraCapture {
@@ -159,19 +165,17 @@ struct HistoryView: View {
                     }
                 }
             }
-            .sheet(isPresented: $isShowingMealTypeChooser, onDismiss: clearPendingCapture) {
-                if let pendingImage {
-                    CaptureMealTypeSheet(
-                        image: pendingImage,
-                        mealTypes: mealTypes,
-                        loggedAt: pendingLoggedAt,
-                        onSave: savePendingCapture,
-                        onCancel: clearPendingCapture,
-                        selectedMealTypeID: $selectedMealTypeID
-                    )
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-                }
+            .sheet(item: $activeMealTypeCapture, onDismiss: clearPendingCapture) { capture in
+                CaptureMealTypeSheet(
+                    image: capture.image,
+                    mealTypes: mealTypes,
+                    loggedAt: capture.loggedAt,
+                    onSave: savePendingCapture,
+                    onCancel: clearPendingCapture,
+                    selectedMealTypeID: $selectedMealTypeID
+                )
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $isShowingMealTypeManagement) {
                 NavigationStack {
@@ -386,17 +390,19 @@ struct HistoryView: View {
     }
 
     private func beginIngest(with image: PlatformImage) {
-        pendingImage = image
-        pendingLoggedAt = Date.now
+        let capture = PendingCapture(image: image, loggedAt: Date.now)
+        stagedCapture = capture
 
         do {
-            selectedMealTypeID = try service.suggestedMealType(for: pendingLoggedAt)?.id
+            selectedMealTypeID = try service.suggestedMealType(for: capture.loggedAt)?.id
             if selectedMealTypeID == nil {
                 selectedMealTypeID = mealTypes.first?.id
             }
 
-            DispatchQueue.main.async {
-                isShowingMealTypeChooser = true
+            if activeCaptureSource == nil {
+                activeMealTypeCapture = capture
+            } else {
+                shouldShowMealTypeChooserAfterCaptureDismiss = true
             }
         } catch {
             ingestErrorMessage = error.localizedDescription
@@ -404,8 +410,23 @@ struct HistoryView: View {
         }
     }
 
+    private func handleCaptureDismissal() {
+        guard shouldShowMealTypeChooserAfterCaptureDismiss else {
+            return
+        }
+
+        shouldShowMealTypeChooserAfterCaptureDismiss = false
+
+        guard let stagedCapture else {
+            ingestErrorMessage = "Could not load the selected image. Please try again."
+            return
+        }
+
+        activeMealTypeCapture = stagedCapture
+    }
+
     private func savePendingCapture() {
-        guard let pendingImage else {
+        guard let capture = activeMealTypeCapture ?? stagedCapture else {
             ingestErrorMessage = "Missing captured image"
             return
         }
@@ -417,9 +438,9 @@ struct HistoryView: View {
 
         do {
             _ = try service.ingest(
-                image: pendingImage,
+                image: capture.image,
                 mealTypeID: selectedMealTypeID,
-                loggedAt: pendingLoggedAt
+                loggedAt: capture.loggedAt
             )
             clearPendingCapture()
             reconcileSelectionIfNeeded()
@@ -433,9 +454,10 @@ struct HistoryView: View {
     }
 
     private func clearPendingCapture() {
-        pendingImage = nil
+        stagedCapture = nil
+        activeMealTypeCapture = nil
         selectedMealTypeID = nil
-        isShowingMealTypeChooser = false
+        shouldShowMealTypeChooserAfterCaptureDismiss = false
     }
 
     private func reconcileSelectionIfNeeded() {

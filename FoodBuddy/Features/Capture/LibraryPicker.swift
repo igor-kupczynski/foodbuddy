@@ -37,10 +37,14 @@ struct LibraryPicker: UIViewControllerRepresentable {
             _ picker: UIImagePickerController,
             didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
         ) {
-            if let image = info[.originalImage] as? UIImage {
-                onImagePicked(image)
-            }
+            let selectedImage = info[.originalImage] as? UIImage
             dismiss()
+
+            if let selectedImage {
+                DispatchQueue.main.async {
+                    self.onImagePicked(selectedImage)
+                }
+            }
         }
     }
 }

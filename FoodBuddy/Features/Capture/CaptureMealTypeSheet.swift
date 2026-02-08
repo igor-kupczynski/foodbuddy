@@ -42,6 +42,7 @@ struct CaptureMealTypeSheet: View {
                     Button("Cancel") {
                         onCancel()
                     }
+                    .accessibilityIdentifier("capture-mealtype-cancel")
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
@@ -49,6 +50,7 @@ struct CaptureMealTypeSheet: View {
                         onSave()
                     }
                     .disabled(selectedMealTypeID == nil || mealTypes.isEmpty)
+                    .accessibilityIdentifier("capture-mealtype-save")
                 }
             }
             .onAppear {

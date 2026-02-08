@@ -31,8 +31,11 @@ struct MockCameraCaptureView: View {
                     .accessibilityIdentifier("mock-camera-cancel")
 
                     Button("Use Mock Photo") {
-                        onImagePicked(makeMockImage())
+                        let image = makeMockImage()
                         dismiss()
+                        DispatchQueue.main.async {
+                            onImagePicked(image)
+                        }
                     }
                     .buttonStyle(.borderedProminent)
                     .accessibilityIdentifier("mock-camera-use-photo")

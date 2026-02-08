@@ -29,6 +29,22 @@ final class CapturePresentationUITests: XCTestCase {
         XCTAssertTrue(waitForNonExistence(of: mockCameraRoot, timeout: 5))
     }
 
+    func testUsingMockPhotoPresentsSaveMealSheet() throws {
+        let app = launchApp()
+
+        app.buttons["Add"].tap()
+        app.buttons["Take Photo"].tap()
+
+        let mockCameraRoot = app.otherElements["mock-camera-root"]
+        XCTAssertTrue(mockCameraRoot.waitForExistence(timeout: 5))
+
+        app.buttons["mock-camera-use-photo"].tap()
+
+        XCTAssertTrue(waitForNonExistence(of: mockCameraRoot, timeout: 5))
+        XCTAssertTrue(app.buttons["capture-mealtype-cancel"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["capture-mealtype-save"].waitForExistence(timeout: 5))
+    }
+
     private func launchApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments.append("--use-mock-camera-capture")

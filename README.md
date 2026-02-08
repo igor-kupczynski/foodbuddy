@@ -6,7 +6,8 @@ FoodBuddy is an iOS meal logger with meal-first history, editable meal timestamp
 
 Iteration `003` from `docs/003-plan-photo-sync-reliability.md` is complete.
 Iteration `004` from `docs/004-plan-ipad-adaptive-ui.md` is implemented (adaptive iPad layout + split navigation).
-Iteration `005` implementation is active in `docs/005-plan-viewport-capture-reassignment.md` (viewport/capture reliability + meal-type reassignment); physical iPhone smoke validation remains required before merge.
+Iteration `005` from `docs/005-plan-viewport-capture-reassignment.md` is implemented (viewport/capture reliability + meal-type reassignment).
+Iteration `006` implementation is active in `docs/006-plan-capture-sheet-blank-first-pick.md` (blank Save Meal sheet on first pick); physical iPhone smoke validation remains required before merge.
 
 Implemented features:
 
@@ -26,6 +27,7 @@ Implemented features:
 - Launch-screen metadata enforcement to prevent compatibility viewport/letterboxing regressions.
 - Hardened Add -> Take Photo presentation handoff and mock-camera capture seam for UI tests.
 - Entry detail meal-type reassignment flow with confirmation and service-level reassignment invariants.
+- Payload-driven Save Meal sheet presentation to prevent intermittent blank sheet on first library/camera pick.
 - Automated verifier covering preprocessing bounds, ingest-to-pending queue behavior, upload state transitions, retry recovery, and hydration.
 
 ## Development Requirements
@@ -68,8 +70,8 @@ xcodegen generate
 # Fast verifier tests (no iOS simulator required)
 xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64' | xcbeautify
 
-# Capture presentation UI regression test (mock camera path)
-xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddyUITests -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:FoodBuddyUITests/CapturePresentationUITests/testTakePhotoPresentsFullWindowMockCameraAndAllowsCancel | xcbeautify
+# Capture presentation UI regression tests (mock camera path)
+xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddyUITests -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:FoodBuddyUITests/CapturePresentationUITests | xcbeautify
 ```
 
 If `xcbeautify` is not installed, run the same `xcodebuild test` commands without the pipe.
