@@ -117,7 +117,7 @@ Make FoodBuddy feel native and reliable on iPad while preserving existing iPhone
 ### M6: Documentation and rollout readiness
 
 - Update `README.md` run guidance for iPad simulator validation.
-- Keep `AGENTS.md` and `docs/004-plan.md` execution status current.
+- Keep `AGENTS.md` and `docs/004-plan-ipad-adaptive-ui.md` execution status current.
 - Capture any deferred follow-ups for 005.
 - Deliverable: docs describe required iPad validation steps and any deliberate 005 deferrals.
 
@@ -202,7 +202,7 @@ Last updated: 2026-02-07
 
 ### Active Task Log
 
-- [Completed] M6.1 Draft and publish `docs/004-plan.md`.
+- [Completed] M6.1 Draft and publish `docs/004-plan-ipad-adaptive-ui.md`.
 - [Completed] M6.2 Finalize locked iPad scope decisions (section 12).
 - [Completed] M1.1 Implement adaptive app shell for compact vs regular width.
 - [Completed] M2.1 Wire meal selection state for split navigation.

@@ -4,8 +4,9 @@ FoodBuddy is an iOS meal logger with meal-first history, editable meal timestamp
 
 ## Current Status
 
-Iteration `003` from `docs/003-plan.md` is complete.
-Iteration `004` implementation is active in `docs/004-plan.md` (iPad readiness + adaptive UI); manual iPad smoke validation remains required before merge.
+Iteration `003` from `docs/003-plan-photo-sync-reliability.md` is complete.
+Iteration `004` implementation is active in `docs/004-plan-ipad-adaptive-ui.md` (iPad readiness + adaptive UI); manual iPad smoke validation remains required before merge.
+Iteration `005` is drafted in `docs/005-plan-viewport-capture-reassignment.md` to address iPhone viewport/camera presentation regressions and add automated guardrails.
 
 Implemented features:
 
