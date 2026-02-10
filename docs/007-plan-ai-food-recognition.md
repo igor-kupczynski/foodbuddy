@@ -18,13 +18,15 @@ Apple provides no developer-facing VLM API. Visual Intelligence is user-facing o
 
 ### AI provider
 
-**Mistral Large 3** (`mistral-large-3-25-12`) — 675B sparse MoE model with native vision encoder. Supports multiple images per request, base64 image input, and enforced JSON schema output.
+**Mistral Large 3** (`mistral-large-3-25-12`) — 675B sparse MoE model (41B active parameters) with native vision encoder. Supports multiple images per request, base64 image input, and enforced JSON schema output.
 
 - API: `POST https://api.mistral.ai/v1/chat/completions`
-- Auth: Bearer token
-- Images: base64-encoded JPEG in `image_url` content blocks
-- Pricing: $2/M input tokens, $5/M output tokens
-- Limits: 10MB per image, max 8 images per request, 5 req/s
+- Auth: `Authorization: Bearer $MISTRAL_API_KEY`
+- Images: base64-encoded JPEG in `image_url` content blocks using data URIs (`data:image/jpeg;base64,{base64data}`)
+- Pricing: $0.50/M input tokens, $1.50/M output tokens
+- Limits: 10 MB per image, max 8 images per request. Rate limits are workspace-tier dependent (check console.mistral.ai).
+
+**Why Large 3 and not Small 3.2?** Mistral Small 3.2 (`mistral-small-latest`, 24B) also supports vision at $0.10/$0.30 per M tokens — 5x cheaper. For a 1-3 sentence food description, Small 3.2 may suffice. We start with Large 3 for quality and can downgrade to Small 3.2 later if costs matter and quality is acceptable. The service protocol abstracts the model choice, so switching is a one-line change.
 
 ## 3. Product Outcomes
 
@@ -107,6 +109,8 @@ For the **single-photo case** (most common), the experience is nearly identical 
 
 If the API call fails, the meal's status is set to `failed`. The UI shows this clearly. The user can manually retry via the same re-analyze button used for notes changes. No background retry logic, no exponential backoff — keep it simple.
 
+Mistral API error codes to handle: 401 (bad API key — surface to user in Settings), 429 (rate limited — treat as transient failure), 5xx (server error — transient failure). All map to the same `failed` status; the user-facing message can vary.
+
 ### Where AI description appears
 
 **History list (MealRowView)** — 1-line preview under the meal type name, replacing the entry count line when a description exists:
@@ -171,7 +175,14 @@ meal, possibly with notes for context.
 (if notes provided) "Additional context: {user_notes}"
 ```
 
-Images are sent as content blocks with `type: "image_url"` and base64-encoded JPEG data.
+Images are sent as content blocks with `type: "image_url"` and base64-encoded JPEG data URIs:
+
+```json
+{
+  "type": "image_url",
+  "image_url": "data:image/jpeg;base64,/9j/4AAQ..."
+}
+```
 
 ### Enforced JSON schema via `response_format`
 
@@ -230,10 +241,13 @@ Takes JPEG data for all meal photos + optional notes. Returns the description st
 
 ### MistralFoodRecognitionService
 
-- Encodes images as base64, builds content blocks
-- Sends chat completion request with system prompt + `response_format` schema
-- Parses JSON response, extracts `description` field
-- Throws on network/parse errors
+This is the first REST API client in the app (existing networking is CloudKit only). Uses `URLSession` directly — no SDK needed since Mistral's API is a single endpoint.
+
+- Builds multipart content blocks: base64 `image_url` blocks + optional text block for notes
+- Sends `POST /v1/chat/completions` with system prompt + `response_format` (json_schema, strict)
+- Decodes JSON response → `choices[0].message.content` → parses inner `{"description": "..."}` string
+- Throws typed errors: `networkError`, `httpError(statusCode)`, `decodingError`, `noAPIKey`
+- Uses pinned model ID (`mistral-large-3-25-12`) for production stability, not `-latest` alias
 
 ### MockFoodRecognitionService
 
@@ -293,7 +307,72 @@ Re-analyze (from meal detail) also goes through this coordinator: resets status 
 - Manual: capture meal → wait for description → edit notes → re-analyze
 - Update README.md
 
-## 9. Risks and Mitigations
+## 9. Automated Validation Gates
+
+Each milestone has a set of checks the implementing agent **must** pass before moving on. All gates run without a real Mistral API key and without an iOS Simulator.
+
+### Build + existing tests (every milestone)
+
+```bash
+# Regenerate project after any project.yml change
+xcodegen generate
+
+# Build the main app target (iOS)
+xcodebuild build -project FoodBuddy.xcodeproj -scheme FoodBuddy \
+  -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO | xcbeautify
+
+# Run core unit tests (macOS, no simulator)
+xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy \
+  -destination 'platform=macOS' | xcbeautify
+
+# Launch screen guardrail
+./scripts/assert-launch-screen-config.sh
+```
+
+All four commands must exit 0. Existing tests must keep passing — no regressions.
+
+### M1 gate: Batch capture session
+
+New tests in `FoodBuddyCoreTests` (follow existing `TestHarness` pattern with in-memory SwiftData):
+
+- **Batch save creates multiple entries**: Save a session with 3 photos → meal has 3 `MealEntry` records, all sharing the same `Meal`.
+- **Single-photo save still works**: Save with 1 photo → identical to current behavior (1 meal, 1 entry).
+- **Empty gallery cannot save**: Verify save is blocked when photo array is empty.
+
+### M2 gate: Data model + service layer
+
+New tests in `FoodBuddyCoreTests`:
+
+- **Meal model has new fields**: Create a `Meal`, set `aiDescription`, `userNotes`, `aiAnalysisStatus` → persists and round-trips through in-memory SwiftData.
+- **MistralFoodRecognitionService builds correct request JSON**: Inject a mock `URLProtocol` that captures the outgoing `URLRequest`. Call `describe(images:notes:)` with 2 JPEG blobs + a note string. Assert:
+  - URL is `https://api.mistral.ai/v1/chat/completions`
+  - `Authorization` header is `Bearer <key>`
+  - Body JSON contains `model: "mistral-large-3-25-12"`
+  - `messages[0].role == "system"` with the food-logging prompt
+  - `messages[1].content` array has 2 `image_url` blocks + 1 text block with `"Additional context: ..."`
+  - `response_format.json_schema.strict == true`
+- **MistralFoodRecognitionService parses response**: Feed a canned `{"choices":[{"message":{"content":"{\"description\":\"Grilled salmon with rice\"}"}}]}` response through the mock URLProtocol → service returns `"Grilled salmon with rice"`.
+- **MistralFoodRecognitionService handles errors**: 401 response → throws appropriate error. 500 response → throws appropriate error. Malformed JSON → throws decoding error.
+- **FoodAnalysisCoordinator happy path**: With `MockFoodRecognitionService` returning a canned description: create a meal with `aiAnalysisStatus == "pending"` → run coordinator → status becomes `"completed"`, `aiDescription` is set.
+- **FoodAnalysisCoordinator failure path**: Mock service throws → status becomes `"failed"`, `aiDescription` remains nil.
+- **FoodAnalysisCoordinator skips without API key**: No key configured → pending meals stay pending, no service call made.
+
+### M3 gate: Settings screen
+
+- Build succeeds (covered by the base gate).
+- **Keychain wrapper unit test**: Write a key → read it back → matches. Delete → read returns nil. (Use a test-specific service name to avoid polluting the real keychain.)
+
+### M4 gate: AI description display + re-analyze
+
+- Build succeeds (covered by the base gate).
+- **Re-analyze resets status**: Set a meal's `aiAnalysisStatus` to `"completed"` → trigger re-analyze → status becomes `"pending"`.
+
+### M5 gate: Final verification
+
+- All gates above pass in a single clean run.
+- `xcodegen generate && xcodebuild build` succeeds for `FoodBuddyDev` scheme too.
+
+## 10. Risks and Mitigations
 
 - **Risk**: Image token cost spikes with many large photos.
   - Mitigation: Images already preprocessed to max 1600px / 75% JPEG. Max 8 images per API call matches Mistral limit.
@@ -302,7 +381,7 @@ Re-analyze (from meal detail) also goes through this coordinator: resets status 
 - **Risk**: API key exposure in device backups.
   - Mitigation: Keychain storage (excluded from unencrypted backups by default).
 
-## 10. Execution Status
+## 11. Execution Status
 
 Last updated: 2026-02-10
 
