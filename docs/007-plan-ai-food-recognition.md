@@ -5,7 +5,7 @@
 Add AI-powered food recognition to meal photos and introduce batch capture so users can photograph multiple dishes in one session.
 
 After this iteration:
-- Users capture one or more photos per meal in a single session
+- Users capture up to 8 photos per meal in a single session
 - Each meal gets an automatic AI-generated description of the food visible across all its photos
 - Users can add optional notes (e.g. "Pizza Hut, double cheese upgrade") and re-analyze for a better description
 - The capture flow stays fast — AI runs in the background after save
@@ -30,7 +30,7 @@ Apple provides no developer-facing VLM API. Visual Intelligence is user-facing o
 
 ## 3. Product Outcomes
 
-- Batch capture: user takes 1-N photos, picks meal type once, saves all entries to one meal.
+- Batch capture: user takes 1-8 photos, picks meal type once, saves all entries to one meal.
 - AI description appears on meal detail and as a preview in the history list.
 - Optional notes field at capture time (also editable later in meal detail).
 - Re-analyze button sends photos + updated notes back to the VLM.
@@ -49,7 +49,7 @@ New:
 ```
 tap [+] → source dialog → camera → CaptureSessionView(1 photo in gallery)
                                       ├── [Add photo] → source dialog → camera → returns with 2 photos
-                                      ├── [Add photo] → ... → returns with N photos
+                                      ├── [Add photo] → ... → returns with up to 8 photos
                                       ├── Notes text field (optional)
                                       ├── Meal type picker (time-based default)
                                       └── [Save]
@@ -90,6 +90,7 @@ For the **single-photo case** (most common), the experience is nearly identical 
 ```
 
 - Scrollable `Form` or `List` with photo cards (aspect-fit, rounded corners, ✕ to remove)
+- **Hard cap: 8 photos per session.** "Add another photo" button is hidden when the gallery has 8 images. This matches the Mistral API limit (max 8 images per request) and avoids chunking complexity. 8 photos of a single meal is more than sufficient.
 - Save is disabled when gallery is empty
 - Removing the last photo doesn't dismiss — user can add a new one or tap Cancel
 
@@ -105,11 +106,16 @@ For the **single-photo case** (most common), the experience is nearly identical 
 
 **Automatic after save**, if an API key is configured. No manual trigger needed for first analysis. Re-analysis is always manual (user taps re-analyze in meal detail).
 
-### Error handling — no auto-retry
+### Error handling — manual recovery only
 
-If the API call fails, the meal's status is set to `failed`. The UI shows this clearly. The user can manually retry via the same re-analyze button used for notes changes. No background retry logic, no exponential backoff — keep it simple.
+If the API call fails for any reason, the meal's status is set to `failed`. There is no automatic retry — no background retry logic, no exponential backoff, no distinction between transient and permanent failures. The user can manually retry via the same re-analyze button used for notes changes. This keeps the implementation simple and predictable.
 
-Mistral API error codes to handle: 401 (bad API key — surface to user in Settings), 429 (rate limited — treat as transient failure), 5xx (server error — transient failure). All map to the same `failed` status; the user-facing message can vary.
+Mistral API error codes to handle:
+- **401** — bad API key. Surface clearly so the user can fix it in Settings.
+- **429** — rate limited. Lands in `failed`; user retries later when rate window resets.
+- **5xx** — server error. Lands in `failed`; user retries manually.
+- **Network error** — offline / timeout. Lands in `failed`.
+- **Decoding error** — unexpected response shape. Lands in `failed`.
 
 ### Where AI description appears
 
@@ -184,9 +190,9 @@ Images are sent as content blocks with `type: "image_url"` and base64-encoded JP
 }
 ```
 
-### Enforced JSON schema via `response_format`
+### JSON schema via `response_format`
 
-Mistral supports strict schema enforcement through the `response_format` parameter — the model is constrained to output valid JSON matching the schema. No need to hope it follows instructions.
+Mistral's `response_format` with `type: "json_schema"` and `strict: true` constrains the model to output JSON matching the schema. This makes well-formed `{"description": "..."}` the overwhelmingly common case, but it is **not an absolute guarantee** — the service must still handle edge cases defensively.
 
 ```json
 {
@@ -211,21 +217,39 @@ Mistral supports strict schema enforcement through the `response_format` paramet
 }
 ```
 
-This guarantees we always get `{"description": "..."}` back — no parsing surprises.
+**Defensive parsing requirements** — the service must guard against all of:
+- Empty `choices` array (possible on safety refusals or server errors)
+- `choices[0].message.content` being `nil` or not a string
+- Content string that is not valid JSON or missing the `description` key
+- `description` value being empty string
+
+Each case throws a `decodingError` — the coordinator handles it like any other failure.
 
 ## 6. Data Model Changes
 
 ### On `Meal` — new fields
 
 ```
-aiDescription: String?       — AI-generated meal description
-userNotes: String?           — user-provided hints/context
-aiAnalysisStatus: String     — "none" | "pending" | "analyzing" | "completed" | "failed"
+aiDescription: String?              — AI-generated meal description
+userNotes: String?                  — user-provided hints/context
+aiAnalysisStatusRawValue: String    — persisted raw value for AIAnalysisStatus enum
 ```
 
-These are string fields on an existing SwiftData model — CloudKit sync comes for free.
+**`AIAnalysisStatus` enum** (mirrors existing `PhotoAssetSyncState` pattern):
 
-`aiAnalysisStatus` defaults to `"none"` for existing meals and `"pending"` for new meals when an API key is configured.
+```swift
+enum AIAnalysisStatus: String, Codable {
+    case none         // no API key or not yet queued
+    case pending      // queued for analysis
+    case analyzing    // API call in flight
+    case completed    // description available
+    case failed       // last attempt failed
+}
+```
+
+`Meal` stores `aiAnalysisStatusRawValue: String` and exposes a computed `aiAnalysisStatus` property that converts to/from the enum. This keeps CloudKit sync working (plain string field) while giving call sites compile-time safety and exhaustive `switch`.
+
+Defaults: `"none"` for existing meals, `"pending"` for new meals when an API key is configured.
 
 ## 7. Service Architecture
 
@@ -241,11 +265,11 @@ Takes JPEG data for all meal photos + optional notes. Returns the description st
 
 ### MistralFoodRecognitionService
 
-This is the first REST API client in the app (existing networking is CloudKit only). Uses `URLSession` directly — no SDK needed since Mistral's API is a single endpoint.
+This is the first REST API client in the app (existing networking is CloudKit only). Uses `URLSession` directly — no SDK needed since Mistral's API is a single endpoint. **Not `@MainActor`** — all work (base64 encoding, payload assembly, network call, response parsing) runs off the main thread.
 
 - Builds multipart content blocks: base64 `image_url` blocks + optional text block for notes
 - Sends `POST /v1/chat/completions` with system prompt + `response_format` (json_schema, strict)
-- Decodes JSON response → `choices[0].message.content` → parses inner `{"description": "..."}` string
+- Decodes JSON response with defensive parsing (see section 5)
 - Throws typed errors: `networkError`, `httpError(statusCode)`, `decodingError`, `noAPIKey`
 - Uses pinned model ID (`mistral-large-3-25-12`) for production stability, not `-latest` alias
 
@@ -255,13 +279,23 @@ Returns canned responses. Used in previews and tests.
 
 ### FoodAnalysisCoordinator
 
-- On app foreground + after new capture: queries meals with `aiAnalysisStatus == "pending"`
-- Sets status to `"analyzing"`, loads all entry images from `ImageStore`
-- Calls `FoodRecognitionService.describe(...)`
-- On success: writes description, sets status to `"completed"`
-- On failure: sets status to `"failed"` — no auto-retry
+**A dedicated `actor` (not `@MainActor`)** that owns the analysis lifecycle. Heavy work — loading images from `ImageStore`, base64-encoding them, waiting for the network response — must not block the UI thread.
 
-Re-analyze (from meal detail) also goes through this coordinator: resets status to `"pending"`, coordinator picks it up.
+Workflow:
+1. On app foreground + after new capture: queries meals with `aiAnalysisStatus == .pending`
+2. **Idempotent guard**: before starting, re-read the meal's status. If another run (or another device via CloudKit) already moved it past `.pending`, skip it. This prevents duplicate API calls on repeated foreground events.
+3. Sets status to `.analyzing` (written back to `@MainActor` ModelContext), loads all entry images from `ImageStore`
+4. Calls `FoodRecognitionService.describe(...)` (off main thread)
+5. On success: publishes description + `.completed` status back to main actor
+6. On failure: publishes `.failed` status back to main actor — no auto-retry
+
+**Main actor boundary**: only the final status + description writes touch `ModelContext`. All image loading, encoding, and networking happen on the coordinator's actor.
+
+Re-analyze (from meal detail) also goes through this coordinator: resets status to `.pending`, coordinator picks it up.
+
+### CloudKit conflict rule
+
+If two devices analyze the same meal concurrently, standard SwiftData/CloudKit last-write-wins applies — same as all other `Meal` fields. The worst case is one description overwrites another; both are AI-generated and roughly equivalent. No custom conflict resolution needed.
 
 ### API Key Storage
 
@@ -275,18 +309,18 @@ Re-analyze (from meal detail) also goes through this coordinator: resets status 
 ### M1: Batch capture session
 
 - New `CaptureSessionView` replacing `CaptureMealTypeSheet`
-- Scrollable photo gallery with add/remove
+- Scrollable photo gallery with add/remove, hard-capped at 8 photos
 - Notes text field + meal type picker
-- "Add photo" opens source dialog → camera/library from within the sheet
+- "Add photo" opens source dialog → camera/library from within the sheet; hidden at 8
 - Creates multiple `MealEntry` records in one meal on save
 - Single-photo case works naturally (gallery with 1 photo)
 
 ### M2: Data model + service layer
 
-- Add `aiDescription`, `userNotes`, `aiAnalysisStatus` to `Meal`
-- `FoodRecognitionService` protocol + `MistralFoodRecognitionService`
+- Add `aiDescription`, `userNotes`, `aiAnalysisStatusRawValue` to `Meal` with `AIAnalysisStatus` enum
+- `FoodRecognitionService` protocol + `MistralFoodRecognitionService` (non-`@MainActor`, defensive parsing)
 - `MockFoodRecognitionService` for tests
-- `FoodAnalysisCoordinator` background worker (no auto-retry)
+- `FoodAnalysisCoordinator` as dedicated `actor` (not `@MainActor`), idempotent guard, no auto-retry
 - Keychain wrapper for API key storage
 
 ### M3: Settings screen
@@ -302,16 +336,19 @@ Re-analyze (from meal detail) also goes through this coordinator: resets status 
 
 ### M5: Verification + docs
 
-- Unit tests: mock service, coordinator writes descriptions, failure sets status
-- UI test: batch capture flow with mock camera
+- All CI gates pass in a single clean run (see section 9)
+- Simulator gates pass: batch capture UI test + photo cap UI test
 - Manual: capture meal → wait for description → edit notes → re-analyze
 - Update README.md
 
 ## 9. Automated Validation Gates
 
-Each milestone has a set of checks the implementing agent **must** pass before moving on. All gates run without a real Mistral API key and without an iOS Simulator.
+Gates are split into two tiers:
 
-### Build + existing tests (every milestone)
+- **CI gates** — run without a real Mistral API key and without an iOS Simulator. The implementing agent **must** pass these before moving on from each milestone.
+- **Simulator gates** — require a booted iOS Simulator. Run when a simulator is available; not a hard blocker for milestone progression but must pass before M5 is considered complete.
+
+### CI gate: Build + existing tests (every milestone)
 
 ```bash
 # Regenerate project after any project.yml change
@@ -331,19 +368,21 @@ xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy \
 
 All four commands must exit 0. Existing tests must keep passing — no regressions.
 
-### M1 gate: Batch capture session
+### CI gate — M1: Batch capture session
 
 New tests in `FoodBuddyCoreTests` (follow existing `TestHarness` pattern with in-memory SwiftData):
 
 - **Batch save creates multiple entries**: Save a session with 3 photos → meal has 3 `MealEntry` records, all sharing the same `Meal`.
 - **Single-photo save still works**: Save with 1 photo → identical to current behavior (1 meal, 1 entry).
 - **Empty gallery cannot save**: Verify save is blocked when photo array is empty.
+- **Photo cap enforced**: Attempting to add a 9th photo is rejected; gallery stays at 8.
 
-### M2 gate: Data model + service layer
+### CI gate — M2: Data model + service layer
 
 New tests in `FoodBuddyCoreTests`:
 
-- **Meal model has new fields**: Create a `Meal`, set `aiDescription`, `userNotes`, `aiAnalysisStatus` → persists and round-trips through in-memory SwiftData.
+- **Meal model has new fields**: Create a `Meal`, set `aiDescription`, `userNotes`, `aiAnalysisStatus` (via enum) → persists and round-trips through in-memory SwiftData. Verify raw value string matches enum case.
+- **AIAnalysisStatus enum round-trip**: All enum cases survive `rawValue` → `init(rawValue:)` conversion. Unknown raw values fall back to `.none`.
 - **MistralFoodRecognitionService builds correct request JSON**: Inject a mock `URLProtocol` that captures the outgoing `URLRequest`. Call `describe(images:notes:)` with 2 JPEG blobs + a note string. Assert:
   - URL is `https://api.mistral.ai/v1/chat/completions`
   - `Authorization` header is `Bearer <key>`
@@ -351,31 +390,41 @@ New tests in `FoodBuddyCoreTests`:
   - `messages[0].role == "system"` with the food-logging prompt
   - `messages[1].content` array has 2 `image_url` blocks + 1 text block with `"Additional context: ..."`
   - `response_format.json_schema.strict == true`
-- **MistralFoodRecognitionService parses response**: Feed a canned `{"choices":[{"message":{"content":"{\"description\":\"Grilled salmon with rice\"}"}}]}` response through the mock URLProtocol → service returns `"Grilled salmon with rice"`.
-- **MistralFoodRecognitionService handles errors**: 401 response → throws appropriate error. 500 response → throws appropriate error. Malformed JSON → throws decoding error.
-- **FoodAnalysisCoordinator happy path**: With `MockFoodRecognitionService` returning a canned description: create a meal with `aiAnalysisStatus == "pending"` → run coordinator → status becomes `"completed"`, `aiDescription` is set.
-- **FoodAnalysisCoordinator failure path**: Mock service throws → status becomes `"failed"`, `aiDescription` remains nil.
+- **MistralFoodRecognitionService parses valid response**: Feed a canned `{"choices":[{"message":{"content":"{\"description\":\"Grilled salmon with rice\"}"}}]}` response through the mock URLProtocol → service returns `"Grilled salmon with rice"`.
+- **MistralFoodRecognitionService defensive parsing**: Empty `choices` array → throws `decodingError`. `content` is nil → throws. `content` is not valid JSON → throws. JSON missing `description` key → throws. Empty description string → throws.
+- **MistralFoodRecognitionService handles HTTP errors**: 401 response → throws appropriate error. 500 response → throws appropriate error.
+- **FoodAnalysisCoordinator happy path**: With `MockFoodRecognitionService` returning a canned description: create a meal with status `.pending` → run coordinator → status becomes `.completed`, `aiDescription` is set.
+- **FoodAnalysisCoordinator failure path**: Mock service throws → status becomes `.failed`, `aiDescription` remains nil.
 - **FoodAnalysisCoordinator skips without API key**: No key configured → pending meals stay pending, no service call made.
+- **FoodAnalysisCoordinator idempotent guard**: Set meal to `.analyzing` before triggering coordinator → coordinator skips it (does not make a duplicate API call).
 
-### M3 gate: Settings screen
+### CI gate — M3: Settings screen
 
 - Build succeeds (covered by the base gate).
 - **Keychain wrapper unit test**: Write a key → read it back → matches. Delete → read returns nil. (Use a test-specific service name to avoid polluting the real keychain.)
 
-### M4 gate: AI description display + re-analyze
+### CI gate — M4: AI description display + re-analyze
 
 - Build succeeds (covered by the base gate).
-- **Re-analyze resets status**: Set a meal's `aiAnalysisStatus` to `"completed"` → trigger re-analyze → status becomes `"pending"`.
+- **Re-analyze resets status**: Set a meal's `aiAnalysisStatus` to `.completed` → trigger re-analyze → status becomes `.pending`.
 
-### M5 gate: Final verification
+### Simulator gate — M5: UI tests
 
-- All gates above pass in a single clean run.
+These require a booted iOS Simulator and are **not** required at each milestone, but must pass before M5 is complete:
+
+- **Batch capture UI test**: Using mock camera, capture 2 photos → verify both appear in the session view → save → verify meal created with 2 entries.
+- **Photo cap UI test**: Add 8 photos → verify "Add another photo" button is not visible.
+
+### CI gate — M5: Final verification
+
+- All CI gates above pass in a single clean run.
+- All simulator gates pass.
 - `xcodegen generate && xcodebuild build` succeeds for `FoodBuddyDev` scheme too.
 
 ## 10. Risks and Mitigations
 
 - **Risk**: Image token cost spikes with many large photos.
-  - Mitigation: Images already preprocessed to max 1600px / 75% JPEG. Max 8 images per API call matches Mistral limit.
+  - Mitigation: UI hard-capped at 8 photos (matching API limit). Images already preprocessed to max 1600px / 75% JPEG.
 - **Risk**: Batch capture state complexity (multiple photos, source dialogs within sheets).
   - Mitigation: Build on existing capture patterns. Gallery is a simple `[PlatformImage]` array.
 - **Risk**: API key exposure in device backups.
