@@ -34,6 +34,17 @@
       }
     },
     {
+      "name": "mistral",
+      "repo": "https://github.com/igor-kupczynski/skills",
+      "path": "skills/mistral",
+      "commit": "31f9dc2babb5eec30f499e07daf31b76d58b8579",
+      "checksum": "1d4322bd4e8a826b0d6b612b49d8e3afb23a00912641b79e2a0119e7406e42fd",
+      "license": {
+        "spdx": "MIT",
+        "path": "LICENSE"
+      }
+    },
+    {
       "name": "swift-concurrency-expert",
       "repo": "https://github.com/Dimillian/Skills",
       "path": "swift-concurrency-expert",

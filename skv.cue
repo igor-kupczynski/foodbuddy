@@ -40,5 +40,10 @@ skv: {
       repo: "https://github.com/Dimillian/Skills"
       path: "swiftui-view-refactor"
     },
+    {
+      name: "mistral"
+      repo: "https://github.com/igor-kupczynski/skills"
+      path: "skills/mistral"
+    },
   ]
 }
