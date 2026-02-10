@@ -1,3 +1,8 @@
+---
+name: Mistral AI API
+description: Use this skill when integrating an application with the Mistral AI API. It covers models, endpoints, SDKs, and practical patterns.
+---
+
 # Mistral AI API Skill
 
 Use this skill when integrating an application with the Mistral AI API. It covers models, endpoints, SDKs, and practical patterns.

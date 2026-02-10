@@ -11,6 +11,7 @@
 - Do not make changes outside this repository.
 - Make small, focused git commits as milestones are completed.
 - Communication baseline: repository owner is a Cloud SWE (not an Apple/iOS specialist). For Apple platform topics, explain assumptions explicitly, define Apple-specific terms, and prefer concrete step-by-step guidance over shorthand.
+- We learn together: if an agent finds something especially interesting, unexpected, or a hard-won lesson, add it here so future runs benefit.
 
 ## Rules of Engagement
 
@@ -31,3 +32,7 @@
 - Current local phone dev target bundle ID in `project.yml` (`FoodBuddyDev`): `info.kupczynski.foodbuddy.dev`.
 - Current test bundle ID in `project.yml`: `com.igorkupczynski.foodbuddy.coretests`.
 - Current CloudKit container ID: `iCloud.info.kupczynski.foodbuddy` (must keep `iCloud.` prefix; container IDs are not bundle IDs).
+
+
+## Lessons
+- Add notable discoveries and hard-won lessons here as short, practical notes.
