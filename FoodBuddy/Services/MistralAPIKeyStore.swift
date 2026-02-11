@@ -7,9 +7,23 @@ protocol MistralAPIKeyStoring: Sendable {
 }
 
 struct KeychainMistralAPIKeyStore: MistralAPIKeyStoring {
-    enum Error: Swift.Error {
-        case invalidEncoding
+    enum Error: Swift.Error, LocalizedError {
         case keychainFailure(status: OSStatus)
+
+        var errorDescription: String? {
+            switch self {
+            case .keychainFailure(let status):
+                if status == errSecMissingEntitlement {
+                    return "Keychain access is missing entitlements for this build."
+                }
+
+                if let message = SecCopyErrorMessageString(status, nil) as String? {
+                    return "Keychain error (\(status)): \(message)"
+                }
+
+                return "Keychain error (\(status))."
+            }
+        }
     }
 
     let service: String
@@ -31,9 +45,15 @@ struct KeychainMistralAPIKeyStore: MistralAPIKeyStoring {
         switch status {
         case errSecSuccess:
             guard let data = item as? Data else {
-                throw Error.invalidEncoding
+                try? deleteAPIKey()
+                return nil
             }
-            return String(data: data, encoding: .utf8)
+            guard let value = String(data: data, encoding: .utf8) else {
+                // Heal a corrupted/non-text key entry and treat as missing key.
+                try? deleteAPIKey()
+                return nil
+            }
+            return value
         case errSecItemNotFound:
             return nil
         default:
@@ -48,9 +68,7 @@ struct KeychainMistralAPIKeyStore: MistralAPIKeyStoring {
             return
         }
 
-        guard let data = normalized.data(using: .utf8) else {
-            throw Error.invalidEncoding
-        }
+        let data = Data(normalized.utf8)
 
         var addQuery = baseQuery
         addQuery[kSecValueData as String] = data
