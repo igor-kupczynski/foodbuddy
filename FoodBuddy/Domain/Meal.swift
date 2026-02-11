@@ -12,7 +12,7 @@ final class Meal: Identifiable, UpdatedAtVersioned {
     var aiAnalysisStatusRawValue: String = AIAnalysisStatus.none.rawValue
 
     @Relationship(deleteRule: .cascade, inverse: \MealEntry.meal)
-    var entries: [MealEntry]
+    var entries: [MealEntry] = []
 
     var aiAnalysisStatus: AIAnalysisStatus {
         get {

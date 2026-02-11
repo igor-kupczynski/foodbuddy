@@ -38,6 +38,6 @@
 - Add notable discoveries and hard-won lessons here as short, practical notes.
 - UI tests that depend on AI-off behavior should isolate keychain service name via launch environment; otherwise an existing local API key can silently change UI state and make tests flaky.
 - For capture-flow UI tests, assert deterministic in-sheet state (photo count, save enabled, sheet dismissal) rather than post-save list text that can vary with async refresh timing.
-- SwiftData schema evolution: when adding a new non-optional model field, give it a property-level default value (not just an init default) to reduce migration/load failures on existing stores.
+- SwiftData schema evolution: when adding a new non-optional model field, give it a property-level default value (not just an init default) to reduce migration/load failures on existing stores. This applies equally to `@Relationship` arrays (e.g. `var entries: [MealEntry] = []`); the `@Model` macro requires property-level defaults to generate correct schema metadata.
 - Keychain-backed settings should tolerate corrupted/non-UTF8 stored bytes by treating them as missing and self-healing the entry, rather than surfacing a generic save/load error to users.
 - Simulator runtime behavior can differ from CI build flags: disable signing in CI commands via CLI override, but keep app target signing enabled by default so Keychain-backed features work during manual runs.
