@@ -12,6 +12,7 @@ struct MealDetailView: View {
     @State private var errorMessage: String?
     @State private var notesDraft = ""
     @State private var isRunningFoodAnalysis = false
+    @State private var isShowingFailureDetails = false
 
     private var imageStore: ImageStore {
         Dependencies.makeImageStore()
@@ -75,6 +76,9 @@ struct MealDetailView: View {
         }, message: {
             Text(errorMessage ?? "Unknown error")
         })
+        .sheet(isPresented: $isShowingFailureDetails) {
+            AnalysisErrorDetailsSheet(details: meal.aiAnalysisErrorDetails ?? "No details available.")
+        }
     }
 
     private var sortedEntries: [MealEntry] {
@@ -102,8 +106,16 @@ struct MealDetailView: View {
                         .foregroundStyle(.secondary)
                 }
             } else if meal.aiAnalysisStatus == .failed {
-                Text("Analysis failed. Update notes and try again.")
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Analysis failed. Update notes and try again.")
+                        .foregroundStyle(.secondary)
+                    if meal.aiAnalysisErrorDetails != nil {
+                        Button("Show details") {
+                            isShowingFailureDetails = true
+                        }
+                        .font(.footnote)
+                    }
+                }
             } else {
                 Text("No AI description yet.")
                     .foregroundStyle(.secondary)
@@ -169,5 +181,39 @@ struct MealDetailView: View {
         isRunningFoodAnalysis = true
         defer { isRunningFoodAnalysis = false }
         await foodAnalysisCoordinator.processPendingMeals()
+    }
+}
+
+private struct AnalysisErrorDetailsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let details: String
+    @State private var didCopy = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                Text(details)
+                    .font(.caption.monospaced())
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+            }
+            .navigationTitle("Analysis Error")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        UIPasteboard.general.string = details
+                        didCopy = true
+                    } label: {
+                        Label(didCopy ? "Copied" : "Copy", systemImage: didCopy ? "checkmark" : "doc.on.doc")
+                    }
+                }
+            }
+        }
     }
 }

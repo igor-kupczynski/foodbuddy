@@ -9,6 +9,7 @@ final class Meal: Identifiable, UpdatedAtVersioned {
     var updatedAt: Date
     var aiDescription: String?
     var userNotes: String?
+    var aiAnalysisErrorDetails: String?
     var aiAnalysisStatusRawValue: String = AIAnalysisStatus.none.rawValue
 
     @Relationship(deleteRule: .cascade, inverse: \MealEntry.meal)
@@ -30,6 +31,7 @@ final class Meal: Identifiable, UpdatedAtVersioned {
         updatedAt: Date = .now,
         aiDescription: String? = nil,
         userNotes: String? = nil,
+        aiAnalysisErrorDetails: String? = nil,
         aiAnalysisStatusRawValue: String = AIAnalysisStatus.none.rawValue,
         entries: [MealEntry] = []
     ) {
@@ -39,6 +41,7 @@ final class Meal: Identifiable, UpdatedAtVersioned {
         self.updatedAt = updatedAt
         self.aiDescription = aiDescription
         self.userNotes = userNotes
+        self.aiAnalysisErrorDetails = aiAnalysisErrorDetails
         self.aiAnalysisStatusRawValue = aiAnalysisStatusRawValue
         self.entries = entries
     }

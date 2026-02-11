@@ -33,6 +33,7 @@ final class FoodAnalysisModelStore {
         }
 
         meal.aiAnalysisStatus = .analyzing
+        meal.aiAnalysisErrorDetails = nil
         try save()
 
         let filenames = meal.entries
@@ -52,17 +53,19 @@ final class FoodAnalysisModelStore {
         }
 
         meal.aiDescription = description
+        meal.aiAnalysisErrorDetails = nil
         meal.aiAnalysisStatus = .completed
         meal.updatedAt = .now
         try save()
     }
 
-    func markFailed(mealID: UUID) throws {
+    func markFailed(mealID: UUID, errorDetails: String?) throws {
         guard let meal = try fetchMeal(id: mealID) else {
             return
         }
 
         meal.aiAnalysisStatus = .failed
+        meal.aiAnalysisErrorDetails = errorDetails
         meal.updatedAt = .now
         try save()
     }

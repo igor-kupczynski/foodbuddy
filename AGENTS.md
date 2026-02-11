@@ -3,7 +3,7 @@
 ## Working Rules
 
 - Keep `AGENTS.md` and `README.md` up to date throughout implementation work.
-- Treat `docs/007-plan-ai-food-recognition.md` as the active plan baseline (with `docs/006-plan-capture-sheet-blank-first-pick.md` as implemented reference).
+- Treat `docs/008-plan-analysis-failure-details.md` as the active plan baseline (with `docs/007-plan-ai-food-recognition.md` as implemented reference).
 - Keep a current `Development Requirements` section in `README.md` (tooling, versions, setup commands).
 - Keep `README.md` run guidance concise and current for local automated tests, simulator runs, and physical iPhone runs.
 - For any active plan document, mark tasks `In Progress` when started.
@@ -41,3 +41,5 @@
 - SwiftData schema evolution: when adding a new non-optional model field, give it a property-level default value (not just an init default) to reduce migration/load failures on existing stores. This applies equally to `@Relationship` arrays (e.g. `var entries: [MealEntry] = []`); the `@Model` macro requires property-level defaults to generate correct schema metadata.
 - Keychain-backed settings should tolerate corrupted/non-UTF8 stored bytes by treating them as missing and self-healing the entry, rather than surfacing a generic save/load error to users.
 - Simulator runtime behavior can differ from CI build flags: disable signing in CI commands via CLI override, but keep app target signing enabled by default so Keychain-backed features work during manual runs.
+- When service-layer errors are caught and discarded (e.g. in a coordinator's `catch` block), persist a diagnostic string on the model so failures are debuggable. Include: error description, error type, HTTP status/response body if applicable, entity context (IDs, counts), timestamp, and `Thread.callStackSymbols`. Surface via a tappable "Show details" sheet with a Copy button to keep the default UI clean.
+- `FoodBuddyCoreTests` target is macOS-only (`SUPPORTED_PLATFORMS = macosx`). Run tests with `-destination 'platform=macOS'` or the `arch=x86_64` variant, not iOS Simulator destinations.

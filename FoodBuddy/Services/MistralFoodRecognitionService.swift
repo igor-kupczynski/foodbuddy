@@ -68,7 +68,8 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
             throw FoodRecognitionServiceError.networkError
         }
         guard (200..<300).contains(httpResponse.statusCode) else {
-            throw FoodRecognitionServiceError.httpError(statusCode: httpResponse.statusCode)
+            let body = String(data: data.prefix(2000), encoding: .utf8)
+            throw FoodRecognitionServiceError.httpError(statusCode: httpResponse.statusCode, responseBody: body)
         }
 
         let payload: MistralResponse

@@ -1,10 +1,23 @@
 import Foundation
 
-enum FoodRecognitionServiceError: Swift.Error, Equatable {
+enum FoodRecognitionServiceError: Swift.Error, Equatable, LocalizedError {
     case noAPIKey
     case networkError
-    case httpError(statusCode: Int)
+    case httpError(statusCode: Int, responseBody: String?)
     case decodingError
+
+    var errorDescription: String? {
+        switch self {
+        case .noAPIKey:
+            return "No API key configured"
+        case .networkError:
+            return "Network error — check your connection"
+        case .httpError(let statusCode, _):
+            return "Server error (HTTP \(statusCode))"
+        case .decodingError:
+            return "Unexpected response from AI service"
+        }
+    }
 }
 
 protocol FoodRecognitionService: Sendable {

@@ -140,7 +140,13 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
             _ = try await service.describe(images: [Data("image".utf8)], notes: nil)
             XCTFail("Expected httpError")
         } catch let error as FoodRecognitionServiceError {
-            XCTAssertEqual(error, .httpError(statusCode: statusCode))
+            switch error {
+            case .httpError(let code, let body):
+                XCTAssertEqual(code, statusCode)
+                XCTAssertNotNil(body)
+            default:
+                XCTFail("Expected httpError, got \(error)")
+            }
         } catch {
             XCTFail("Unexpected error: \(error)")
         }

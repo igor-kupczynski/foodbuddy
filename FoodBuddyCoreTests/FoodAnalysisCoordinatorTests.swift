@@ -20,6 +20,7 @@ final class FoodAnalysisCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(meal.aiAnalysisStatus, .completed)
         XCTAssertEqual(meal.aiDescription, "Pasta with tomato sauce")
+        XCTAssertNil(meal.aiAnalysisErrorDetails)
         let callCount = await recognitionSpy.recordedCallCount()
         XCTAssertEqual(callCount, 1)
     }
@@ -41,6 +42,8 @@ final class FoodAnalysisCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(meal.aiAnalysisStatus, .failed)
         XCTAssertNil(meal.aiDescription)
+        XCTAssertNotNil(meal.aiAnalysisErrorDetails)
+        XCTAssertTrue(meal.aiAnalysisErrorDetails?.contains("Network error") == true)
         let callCount = await recognitionSpy.recordedCallCount()
         XCTAssertEqual(callCount, 1)
     }
