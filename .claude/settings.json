@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xcodegen:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(xcbeautify:*)",
+      "Bash(swift:*)",
+      "Bash(./scripts/*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git show:*)",
+      "Bash(git stash:*)",
+      "Bash(git merge:*)",
+      "Bash(git rebase:*)",
+      "Bash(git tag:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git rev-list:*)",
+      "Bash(git push:*)",
+      "Bash(git remote:*)",
+      "Bash(gh:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(which:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(open:*)",
+      "Bash(pod:*)",
+      "Bash(brew:*)",
+      "Bash(swiftlint:*)",
+      "Bash(swiftformat:*)"
+    ],
+    "deny": []
+  }
+}
