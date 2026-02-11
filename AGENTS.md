@@ -38,3 +38,4 @@
 - Add notable discoveries and hard-won lessons here as short, practical notes.
 - UI tests that depend on AI-off behavior should isolate keychain service name via launch environment; otherwise an existing local API key can silently change UI state and make tests flaky.
 - For capture-flow UI tests, assert deterministic in-sheet state (photo count, save enabled, sheet dismissal) rather than post-save list text that can vary with async refresh timing.
+- SwiftData schema evolution: when adding a new non-optional model field, give it a property-level default value (not just an init default) to reduce migration/load failures on existing stores.
