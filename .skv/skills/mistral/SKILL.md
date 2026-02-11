@@ -82,7 +82,7 @@ console.log(result.choices[0].message.content);
 | Budget reasoning | Magistral Small 1.2 | `magistral-small-latest` | Cheaper reasoning, 40k context |
 | Code completion (IDE / FIM) | Codestral | `codestral-latest` | FIM support, 256k, 80+ languages |
 | Agentic coding / tool use for SWE | Devstral 2 | `devstral-small-latest` | 256k, 123B params, coding-focused |
-| Edge / mobile / low-latency | Ministral 3B/8B/14B | `ministral-3-*b-25-12` | Small, fast, still vision-capable |
+| Edge / mobile / low-latency | Ministral 3B/8B/14B | `ministral-*b-2512` | Small, fast, still vision-capable |
 | Document OCR | Mistral OCR 3 | `mistral-ocr-latest` | $2/1000 pages, preserves structure |
 | Text embeddings | Mistral Embed | `mistral-embed` | 1024 dims, 8k context |
 | Code embeddings | Codestral Embed | `codestral-embed` | 1536 dims (up to 3072) |
@@ -93,9 +93,9 @@ console.log(result.choices[0].message.content);
 
 | Model | API ID | Params | Context | Input $/M | Output $/M |
 |-------|--------|--------|---------|-----------|------------|
-| Mistral Large 3 (v25.12) | `mistral-large-3-25-12` | 675B total (41B active, MoE) | 256k | $0.50 | $1.50 |
-| Mistral Medium 3.1 (v25.08) | `mistral-medium-3-1-25-08` | -- | 128k | $0.40 | $2.00 |
-| Mistral Small 3.2 (v25.06) | `mistral-small-3-2-25-06` | 24B | 128k | $0.06 | $0.18 |
+| Mistral Large 3 (v25.12) | `mistral-large-2512` | 675B total (41B active, MoE) | 256k | $0.50 | $1.50 |
+| Mistral Medium 3.1 (v25.08) | `mistral-medium-2508` | -- | 128k | $0.40 | $2.00 |
+| Mistral Small 3.2 (v25.06) | `mistral-small-2506` | 24B | 128k | $0.06 | $0.18 |
 
 Aliases: `mistral-large-latest`, `mistral-medium-latest`, `mistral-small-latest`.
 
@@ -103,9 +103,9 @@ Aliases: `mistral-large-latest`, `mistral-medium-latest`, `mistral-small-latest`
 
 | Model | API ID | Context | Input $/M | Output $/M |
 |-------|--------|---------|-----------|------------|
-| Ministral 3 14B (v25.12) | `ministral-3-14b-25-12` | 128k | $0.20 | $0.20 |
-| Ministral 3 8B (v25.12) | `ministral-3-8b-25-12` | 128k | $0.15 | $0.15 |
-| Ministral 3 3B (v25.12) | `ministral-3-3b-25-12` | 128k | $0.10 | $0.10 |
+| Ministral 3 14B (v25.12) | `ministral-14b-2512` | 128k | $0.20 | $0.20 |
+| Ministral 3 8B (v25.12) | `ministral-8b-2512` | 128k | $0.15 | $0.15 |
+| Ministral 3 3B (v25.12) | `ministral-3b-2512` | 128k | $0.10 | $0.10 |
 | Mistral Nemo 12B (v24.07) | `open-mistral-nemo` | 128k | $0.02 | $0.04 |
 
 #### Reasoning Models (Magistral)
@@ -122,7 +122,7 @@ Aliases: `magistral-medium-latest`, `magistral-small-latest`.
 | Model | API ID | Context | Input $/M | Output $/M | Notes |
 |-------|--------|---------|-----------|------------|-------|
 | Codestral (v25.08) | `codestral-2508` | 256k | $0.30 | $0.90 | FIM + chat, 80+ languages |
-| Devstral 2 (v25.12) | `devstral-2-25-12` | 256k | $0.05 | $0.22 | Agentic coding, 123B |
+| Devstral 2 (v25.12) | `devstral-2512` | 256k | $0.05 | $0.22 | Agentic coding, 123B |
 
 Aliases: `codestral-latest`, `devstral-small-latest`.
 Codestral endpoint: `https://codestral.mistral.ai/v1/` (preferred for IDE integrations).
@@ -135,7 +135,9 @@ Max 8 images per request, max 10 MB per image.
 
 ### Production Tip
 
-Use specific version IDs (e.g. `mistral-large-3-25-12`) in production for stability. Use `-latest` aliases during development.
+Use specific version IDs (e.g. `mistral-large-2512`) in production for stability. Use `-latest` aliases during development.
+
+**Naming convention**: API model IDs use `{family}-{YYMM}` format (e.g. `mistral-large-2512` for December 2025). Don't confuse these with docs URL slugs which use a different format (e.g. `mistral-large-3-25-12` in `docs.mistral.ai/models/mistral-large-3-25-12`).
 
 ---
 
