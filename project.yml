@@ -28,8 +28,9 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: YES
         CODE_SIGN_ENTITLEMENTS: FoodBuddy/App/FoodBuddy.entitlements
-        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGNING_ALLOWED: YES
         CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED[sdk=macosx*]: NO
 
   FoodBuddyDev:
     type: application

@@ -40,3 +40,4 @@
 - For capture-flow UI tests, assert deterministic in-sheet state (photo count, save enabled, sheet dismissal) rather than post-save list text that can vary with async refresh timing.
 - SwiftData schema evolution: when adding a new non-optional model field, give it a property-level default value (not just an init default) to reduce migration/load failures on existing stores.
 - Keychain-backed settings should tolerate corrupted/non-UTF8 stored bytes by treating them as missing and self-healing the entry, rather than surfacing a generic save/load error to users.
+- Simulator runtime behavior can differ from CI build flags: disable signing in CI commands via CLI override, but keep app target signing enabled by default so Keychain-backed features work during manual runs.
