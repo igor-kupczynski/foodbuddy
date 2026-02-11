@@ -276,6 +276,132 @@ final class MealEntryServiceTests: XCTestCase {
         XCTAssertEqual(spy.callCount, 2)
     }
 
+    func testBatchIngestCreatesMultipleEntriesInSingleMeal() throws {
+        let harness = try TestHarness.make()
+        defer { harness.cleanup() }
+
+        let service = harness.makeService(nowDates: [Date(timeIntervalSince1970: 100)])
+        try service.bootstrapMealTypesIfNeeded()
+        let lunch = try XCTUnwrap(try mealType(named: "Lunch", service: service))
+
+        let images = [
+            TestImageFactory.make(color: .systemBlue),
+            TestImageFactory.make(color: .systemGreen),
+            TestImageFactory.make(color: .systemOrange)
+        ]
+
+        let entries = try service.ingest(
+            images: images,
+            mealTypeID: lunch.id,
+            loggedAt: Date(timeIntervalSince1970: 100),
+            userNotes: "Three-course lunch",
+            aiAnalysisStatus: .pending
+        )
+        let meals = try harness.fetchMeals()
+
+        XCTAssertEqual(entries.count, 3)
+        XCTAssertEqual(meals.count, 1)
+        XCTAssertEqual(meals[0].entries.count, 3)
+        XCTAssertEqual(meals[0].userNotes, "Three-course lunch")
+        XCTAssertEqual(meals[0].aiAnalysisStatus, .pending)
+    }
+
+    func testSinglePhotoBatchIngestCreatesOneEntry() throws {
+        let harness = try TestHarness.make()
+        defer { harness.cleanup() }
+
+        let service = harness.makeService(nowDates: [Date(timeIntervalSince1970: 100)])
+        try service.bootstrapMealTypesIfNeeded()
+        let dinner = try XCTUnwrap(try mealType(named: "Dinner", service: service))
+
+        let entries = try service.ingest(
+            images: [TestImageFactory.make(color: .systemTeal)],
+            mealTypeID: dinner.id,
+            loggedAt: Date(timeIntervalSince1970: 100),
+            userNotes: nil,
+            aiAnalysisStatus: .none
+        )
+
+        XCTAssertEqual(entries.count, 1)
+    }
+
+    func testBatchIngestRejectsEmptyGallery() throws {
+        let harness = try TestHarness.make()
+        defer { harness.cleanup() }
+
+        let service = harness.makeService(nowDates: [Date(timeIntervalSince1970: 100)])
+        try service.bootstrapMealTypesIfNeeded()
+        let breakfast = try XCTUnwrap(try mealType(named: "Breakfast", service: service))
+
+        XCTAssertThrowsError(
+            try service.ingest(
+                images: [],
+                mealTypeID: breakfast.id,
+                loggedAt: Date(timeIntervalSince1970: 100),
+                userNotes: nil,
+                aiAnalysisStatus: .none
+            )
+        ) { error in
+            XCTAssertEqual(error as? MealEntryService.Error, .emptyCaptureSession)
+        }
+    }
+
+    func testBatchIngestRejectsNinthPhoto() throws {
+        let harness = try TestHarness.make()
+        defer { harness.cleanup() }
+
+        let service = harness.makeService(nowDates: [Date(timeIntervalSince1970: 100)])
+        try service.bootstrapMealTypesIfNeeded()
+        let breakfast = try XCTUnwrap(try mealType(named: "Breakfast", service: service))
+
+        let images = (0..<9).map { index in
+            let colors: [PlatformColor] = [
+                .systemRed, .systemBlue, .systemGreen, .systemOrange, .systemTeal,
+                .systemPurple, .systemPink, .systemIndigo, .systemGray
+            ]
+            return TestImageFactory.make(color: colors[index])
+        }
+
+        XCTAssertThrowsError(
+            try service.ingest(
+                images: images,
+                mealTypeID: breakfast.id,
+                loggedAt: Date(timeIntervalSince1970: 100),
+                userNotes: nil,
+                aiAnalysisStatus: .none
+            )
+        ) { error in
+            XCTAssertEqual(error as? MealEntryService.Error, .capturePhotoLimitExceeded)
+        }
+    }
+
+    func testQueueMealForAnalysisSetsPendingAndClearsDescription() throws {
+        let harness = try TestHarness.make()
+        defer { harness.cleanup() }
+
+        let service = harness.makeService(nowDates: [Date(timeIntervalSince1970: 100)])
+        try service.bootstrapMealTypesIfNeeded()
+        let breakfast = try XCTUnwrap(try mealType(named: "Breakfast", service: service))
+
+        _ = try service.ingest(
+            images: [TestImageFactory.make(color: .systemBlue)],
+            mealTypeID: breakfast.id,
+            loggedAt: Date(timeIntervalSince1970: 100),
+            userNotes: "Original notes",
+            aiAnalysisStatus: .completed
+        )
+
+        let meal = try XCTUnwrap(try harness.fetchMeals().first)
+        meal.aiDescription = "Existing description"
+
+        try service.updateMealNotes("Updated notes", for: meal)
+        try service.queueMealForAnalysis(meal)
+
+        XCTAssertEqual(meal.userNotes, "Updated notes")
+        XCTAssertEqual(meal.aiAnalysisStatus, .pending)
+        XCTAssertNil(meal.aiDescription)
+    }
+
     private func mealType(named name: String, service: MealEntryService) throws -> MealType? {
         try service.listMealTypes().first(where: { $0.displayName == name })
     }

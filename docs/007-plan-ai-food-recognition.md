@@ -432,10 +432,10 @@ These require a booted iOS Simulator and are **not** required at each milestone,
 
 ## 11. Execution Status
 
-Last updated: 2026-02-10
+Last updated: 2026-02-11
 
-- M1 Batch capture session: `Not started`
-- M2 Data model + service layer: `Not started`
-- M3 Settings screen: `Not started`
-- M4 AI description display + re-analyze: `Not started`
-- M5 Verification + docs: `Not started`
+- M1 Batch capture session: `Completed`
+- M2 Data model + service layer: `Completed`
+- M3 Settings screen: `Completed`
+- M4 AI description display + re-analyze: `Completed`
+- M5 Verification + docs: `In Progress` (all automated gates pass; manual physical iPhone + real Mistral API validation remains pending)

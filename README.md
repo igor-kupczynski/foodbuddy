@@ -7,7 +7,8 @@ FoodBuddy is an iOS meal logger with meal-first history, editable meal timestamp
 Iteration `003` from `docs/003-plan-photo-sync-reliability.md` is complete.
 Iteration `004` from `docs/004-plan-ipad-adaptive-ui.md` is implemented (adaptive iPad layout + split navigation).
 Iteration `005` from `docs/005-plan-viewport-capture-reassignment.md` is implemented (viewport/capture reliability + meal-type reassignment).
-Iteration `006` implementation is active in `docs/006-plan-capture-sheet-blank-first-pick.md` (blank Save Meal sheet on first pick); physical iPhone smoke validation remains required before merge.
+Iteration `006` from `docs/006-plan-capture-sheet-blank-first-pick.md` is implemented.
+Iteration `007` from `docs/007-plan-ai-food-recognition.md` is implemented for local/mock validation; physical iPhone + real API-key validation remains pending.
 
 Implemented features:
 
@@ -28,6 +29,11 @@ Implemented features:
 - Hardened Add -> Take Photo presentation handoff and mock-camera capture seam for UI tests.
 - Entry detail meal-type reassignment flow with confirmation and service-level reassignment invariants.
 - Payload-driven Save Meal sheet presentation to prevent intermittent blank sheet on first library/camera pick.
+- Batch capture session (`1..8` photos) with in-sheet add/remove flow and optional meal notes.
+- Meal-level AI fields (`aiDescription`, `userNotes`, `aiAnalysisStatus`) with background analysis coordinator.
+- Mistral REST client with strict JSON-schema response format, defensive parsing, and mockable recognition service.
+- AI settings screen with Keychain-backed Mistral API key storage.
+- Meal detail AI states (`none/pending/analyzing/completed/failed`) with manual re-analyze flow.
 - Automated verifier covering preprocessing bounds, ingest-to-pending queue behavior, upload state transitions, retry recovery, and hydration.
 
 ## Development Requirements
@@ -67,11 +73,17 @@ xcodegen generate
 # Guardrail: fail fast if launch-screen metadata is missing
 ./scripts/assert-launch-screen-config.sh
 
+# Build app target without signing (CI-style gate)
+xcodebuild build -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO | xcbeautify
+
 # Fast verifier tests (no iOS simulator required)
 xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64' | xcbeautify
 
 # Capture presentation UI regression tests (mock camera path)
 xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddyUITests -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:FoodBuddyUITests/CapturePresentationUITests | xcbeautify
+
+# Verify local-phone scheme also builds
+xcodebuild build -project FoodBuddy.xcodeproj -scheme FoodBuddyDev -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO | xcbeautify
 ```
 
 If `xcbeautify` is not installed, run the same `xcodebuild test` commands without the pipe.
@@ -92,6 +104,7 @@ Notes:
 
 - Camera is usually unavailable in simulator; use **Choose from Library**.
 - Drag image files into the simulator Photos app to seed test data.
+- CLI option to seed Photos app: `xcrun simctl addmedia "iPhone 17" ~/Downloads/example1.png`.
 
 ## iPad Smoke Validation (Required Pre-Merge)
 
@@ -131,11 +144,11 @@ open FoodBuddy.xcodeproj
 
 Result: app runs on phone with local metadata fallback (no iCloud sync).
 
-005 physical iPhone smoke checks (required before merge):
+007 physical iPhone smoke checks (required before merge):
 
-1. Launch in portrait and verify no black bars / compatibility viewport.
-2. Run `Add -> Take Photo` in portrait and landscape; verify full visible camera UI and cancel path.
-3. Open an existing entry, change meal type, save, and verify history grouping updates.
+1. Capture a meal with 1-2 photos and verify save completes.
+2. If API key is configured in **AI Settings**, wait for AI description to move from `pending/analyzing` to `completed`.
+3. Edit notes in meal detail and tap **Re-analyze**; verify status transitions and updated description.
 
 Optional CloudKit-enabled phone run:
 

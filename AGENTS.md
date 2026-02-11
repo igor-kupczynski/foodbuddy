@@ -3,7 +3,7 @@
 ## Working Rules
 
 - Keep `AGENTS.md` and `README.md` up to date throughout implementation work.
-- Treat `docs/006-plan-capture-sheet-blank-first-pick.md` as the active plan baseline (with `docs/005-plan-viewport-capture-reassignment.md` as implemented reference).
+- Treat `docs/007-plan-ai-food-recognition.md` as the active plan baseline (with `docs/006-plan-capture-sheet-blank-first-pick.md` as implemented reference).
 - Keep a current `Development Requirements` section in `README.md` (tooling, versions, setup commands).
 - Keep `README.md` run guidance concise and current for local automated tests, simulator runs, and physical iPhone runs.
 - For any active plan document, mark tasks `In Progress` when started.
@@ -18,8 +18,8 @@
 - Before coding: run `xcodegen generate` to sync `FoodBuddy.xcodeproj` from `project.yml`.
 - Metadata sync baseline is SwiftData + CloudKit private DB with local fallback; preserve this behavior unless the active plan says otherwise.
 - Fast local verifier: run `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64'` (pipe to `xcbeautify` if installed).
-- Iteration 006 automated gate: run `./scripts/assert-launch-screen-config.sh` and `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddyUITests -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:FoodBuddyUITests/CapturePresentationUITests`.
-- Iteration 006 manual gate: complete physical iPhone first-attempt ingest checks from `docs/006-plan-capture-sheet-blank-first-pick.md` and re-run `docs/005-plan-viewport-capture-reassignment.md` section 7 smoke checks; record pass/fail notes.
+- Iteration 007 automated gate: run `./scripts/assert-launch-screen-config.sh`, `xcodebuild build -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO`, `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64'`, and `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddyUITests -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:FoodBuddyUITests/CapturePresentationUITests`.
+- Iteration 007 manual gate: capture a meal on physical iPhone, verify AI description appears, edit notes, re-analyze, and record pass/fail notes. Real API-key validation is required for this gate.
 - Simulator run: open `FoodBuddy.xcodeproj`, select `FoodBuddy` scheme + iOS simulator, then `Cmd+R`.
 - Physical iPhone run: follow the deterministic local phone flow in `README.md` and use `docs/APPLE_DEV_BASICS.md` for signing/capability background and troubleshooting.
 - When changing behavior, update/add tests first or in the same change and keep verifier green before finalizing.
@@ -36,3 +36,5 @@
 
 ## Lessons
 - Add notable discoveries and hard-won lessons here as short, practical notes.
+- UI tests that depend on AI-off behavior should isolate keychain service name via launch environment; otherwise an existing local API key can silently change UI state and make tests flaky.
+- For capture-flow UI tests, assert deterministic in-sheet state (photo count, save enabled, sheet dismissal) rather than post-save list text that can vary with async refresh timing.

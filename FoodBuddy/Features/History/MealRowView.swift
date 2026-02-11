@@ -16,14 +16,21 @@ struct MealRowView: View {
                     .font(.headline)
                     .lineLimit(1)
 
+                if let aiPreview = trimmedAIPreview {
+                    Text(aiPreview)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                } else {
+                    Text("\(meal.entries.count) entr\(meal.entries.count == 1 ? "y" : "ies")")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
                 Text(timeSummary)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-
-                Text("\(meal.entries.count) entr\(meal.entries.count == 1 ? "y" : "ies")")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             Spacer(minLength: 0)
@@ -74,6 +81,14 @@ struct MealRowView: View {
 
     private var sortedEntries: [MealEntry] {
         meal.entries.sorted(by: { $0.loggedAt > $1.loggedAt })
+    }
+
+    private var trimmedAIPreview: String? {
+        guard let value = meal.aiDescription?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !value.isEmpty else {
+            return nil
+        }
+        return value
     }
 
     private var timeSummary: String {

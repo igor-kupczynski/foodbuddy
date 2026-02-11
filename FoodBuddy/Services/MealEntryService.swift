@@ -20,9 +20,15 @@ enum MealTypeReassignmentResult: Equatable {
 
 @MainActor
 final class MealEntryService: MealEntryIngesting {
-    enum Error: Swift.Error {
+    private enum Constants {
+        static let maxCapturePhotos = 8
+    }
+
+    enum Error: Swift.Error, Equatable {
         case missingMealType
         case missingMeal
+        case emptyCaptureSession
+        case capturePhotoLimitExceeded
     }
 
     private let modelContext: ModelContext
@@ -91,50 +97,128 @@ final class MealEntryService: MealEntryIngesting {
 
     @discardableResult
     func ingest(image: PlatformImage, mealTypeID: UUID, loggedAt: Date) throws -> MealEntry {
+        let entries = try ingestEntries(
+            images: [image],
+            mealTypeID: mealTypeID,
+            loggedAt: loggedAt,
+            userNotes: nil,
+            aiAnalysisStatus: .none
+        )
+        guard let entry = entries.first else {
+            throw Error.emptyCaptureSession
+        }
+        return entry
+    }
+
+    @discardableResult
+    func ingest(
+        images: [PlatformImage],
+        mealTypeID: UUID,
+        loggedAt: Date,
+        userNotes: String?,
+        aiAnalysisStatus: AIAnalysisStatus
+    ) throws -> [MealEntry] {
+        try ingestEntries(
+            images: images,
+            mealTypeID: mealTypeID,
+            loggedAt: loggedAt,
+            userNotes: userNotes,
+            aiAnalysisStatus: aiAnalysisStatus
+        )
+    }
+
+    func updateMealNotes(_ notes: String?, for meal: Meal) throws {
+        meal.userNotes = normalizedNotes(notes)
+        mealService.touch(meal)
+        try save()
+    }
+
+    func queueMealForAnalysis(_ meal: Meal) throws {
+        meal.aiDescription = nil
+        meal.aiAnalysisStatus = .pending
+        mealService.touch(meal)
+        try save()
+    }
+
+    private func ingestEntries(
+        images: [PlatformImage],
+        mealTypeID: UUID,
+        loggedAt: Date,
+        userNotes: String?,
+        aiAnalysisStatus: AIAnalysisStatus
+    ) throws -> [MealEntry] {
+        guard !images.isEmpty else {
+            throw Error.emptyCaptureSession
+        }
+        guard images.count <= Constants.maxCapturePhotos else {
+            throw Error.capturePhotoLimitExceeded
+        }
+
         let now = nowProvider()
         let capturedAt = now
-
-        let processed = try imagePreprocessor.preprocess(image)
-        let imageFilename = try imageStore.saveJPEGData(processed.fullJPEGData)
-        let thumbnailFilename = try imageStore.saveJPEGData(processed.thumbnailJPEGData)
+        var storedImageFilenames: [String] = []
+        var preparedPhotos: [(imageFilename: String, thumbnailFilename: String)] = []
+        preparedPhotos.reserveCapacity(images.count)
 
         do {
+            for image in images {
+                let processed = try imagePreprocessor.preprocess(image)
+                let imageFilename = try imageStore.saveJPEGData(processed.fullJPEGData)
+                let thumbnailFilename = try imageStore.saveJPEGData(processed.thumbnailJPEGData)
+                storedImageFilenames.append(imageFilename)
+                storedImageFilenames.append(thumbnailFilename)
+                preparedPhotos.append((imageFilename: imageFilename, thumbnailFilename: thumbnailFilename))
+            }
+
             guard let mealType = try mealTypeService.fetchType(id: mealTypeID) else {
                 throw Error.missingMealType
             }
 
             let meal = try mealService.meal(for: mealType.id, loggedAt: loggedAt)
             mealService.touch(meal)
+            meal.userNotes = normalizedNotes(userNotes)
+            meal.aiAnalysisStatus = aiAnalysisStatus
+            if aiAnalysisStatus == .pending {
+                meal.aiDescription = nil
+            }
 
-            let entry = MealEntry(
-                id: uuidProvider(),
-                mealId: meal.id,
-                imageFilename: imageFilename,
-                capturedAt: capturedAt,
-                loggedAt: loggedAt,
-                updatedAt: now,
-                meal: meal
-            )
+            var entries: [MealEntry] = []
+            entries.reserveCapacity(preparedPhotos.count)
 
-            let photoAsset = EntryPhotoAsset(
-                id: entry.id,
-                entryId: entry.id,
-                fullImageFilename: imageFilename,
-                thumbnailFilename: thumbnailFilename,
-                state: .pending,
-                updatedAt: now,
-                entry: entry
-            )
-            entry.photoAsset = photoAsset
-            entry.photoAssetId = photoAsset.id
+            for prepared in preparedPhotos {
+                let entry = MealEntry(
+                    id: uuidProvider(),
+                    mealId: meal.id,
+                    imageFilename: prepared.imageFilename,
+                    capturedAt: capturedAt,
+                    loggedAt: loggedAt,
+                    updatedAt: now,
+                    meal: meal
+                )
 
-            modelContext.insert(photoAsset)
-            modelContext.insert(entry)
+                let photoAsset = EntryPhotoAsset(
+                    id: entry.id,
+                    entryId: entry.id,
+                    fullImageFilename: prepared.imageFilename,
+                    thumbnailFilename: prepared.thumbnailFilename,
+                    state: .pending,
+                    updatedAt: now,
+                    entry: entry
+                )
+                entry.photoAsset = photoAsset
+                entry.photoAssetId = photoAsset.id
+
+                modelContext.insert(photoAsset)
+                modelContext.insert(entry)
+                entries.append(entry)
+            }
+
             try save()
-            return entry
+            return entries
         } catch {
-            try? imageStore.deleteImage(filename: imageFilename)
-            try? imageStore.deleteImage(filename: thumbnailFilename)
+            for filename in storedImageFilenames {
+                try? imageStore.deleteImage(filename: filename)
+            }
             throw error
         }
     }
@@ -279,5 +363,10 @@ final class MealEntryService: MealEntryIngesting {
         if modelContext.hasChanges {
             try modelContext.save()
         }
+    }
+
+    private func normalizedNotes(_ notes: String?) -> String? {
+        let trimmed = notes?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
     }
 }

@@ -8,4 +8,9 @@ enum AppRuntimeFlags {
         arguments.contains("--use-mock-camera-capture")
             || environment["FOODBUDDY_USE_MOCK_CAMERA_CAPTURE"] == "1"
     }
+
+    static var useMockFoodRecognition: Bool {
+        arguments.contains("--use-mock-food-recognition")
+            || environment["FOODBUDDY_USE_MOCK_FOOD_RECOGNITION"] == "1"
+    }
 }

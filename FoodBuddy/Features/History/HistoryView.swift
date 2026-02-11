@@ -8,13 +8,15 @@ enum HistoryLayoutMode {
 }
 
 struct HistoryView: View {
-    private struct PendingCapture: Identifiable {
+    private struct PendingCaptureSession: Identifiable {
         let id = UUID()
-        let image: PlatformImage
+        let initialImage: PlatformImage
         let loggedAt: Date
+        let suggestedMealTypeID: UUID?
     }
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
 
     let syncStatus: SyncStatus
     let layoutMode: HistoryLayoutMode
@@ -33,16 +35,16 @@ struct HistoryView: View {
 
     @State private var isShowingCaptureSource = false
     @State private var activeCaptureSource: CaptureSource?
-    @State private var activeMealTypeCapture: PendingCapture?
-    @State private var stagedCapture: PendingCapture?
-    @State private var shouldShowMealTypeChooserAfterCaptureDismiss = false
+    @State private var activeCaptureSession: PendingCaptureSession?
+    @State private var stagedCaptureSession: PendingCaptureSession?
+    @State private var shouldShowCaptureSessionAfterDismiss = false
     @State private var isShowingMealTypeManagement = false
     @State private var isShowingSyncDiagnostics = false
-
-    @State private var selectedMealTypeID: UUID?
+    @State private var isShowingAISettings = false
 
     @State private var hasBootstrappedMealTypes = false
     @State private var isRunningPhotoSync = false
+    @State private var isRunningFoodAnalysis = false
     @State private var ingestErrorMessage: String?
 
     init(syncStatus: SyncStatus, layoutMode: HistoryLayoutMode = .compact) {
@@ -60,6 +62,10 @@ struct HistoryView: View {
 
     private var photoSyncService: PhotoSyncService {
         Dependencies.makePhotoSyncService(modelContext: modelContext, syncStatus: syncStatus)
+    }
+
+    private var foodAnalysisCoordinator: FoodAnalysisCoordinator {
+        Dependencies.makeFoodAnalysisCoordinator(modelContext: modelContext)
     }
 
     private var isShowingIngestError: Binding<Bool> {
@@ -115,6 +121,7 @@ struct HistoryView: View {
 
                 reconcileSelectionIfNeeded()
                 await runPhotoSyncCycle()
+                await runFoodAnalysisCycle()
             }
             .onChange(of: meals.map(\.id)) { _, _ in
                 reconcileSelectionIfNeeded()
@@ -129,6 +136,15 @@ struct HistoryView: View {
 
                 selection.selectedEntryID = nil
                 reconcileSelectionIfNeeded()
+            }
+            .onChange(of: scenePhase) { _, newValue in
+                guard newValue == .active else {
+                    return
+                }
+
+                Task {
+                    await runFoodAnalysisCycle()
+                }
             }
             .confirmationDialog("Add Meal", isPresented: $isShowingCaptureSource, titleVisibility: .visible) {
                 Button(CaptureSource.camera.title) {
@@ -165,14 +181,14 @@ struct HistoryView: View {
                     }
                 }
             }
-            .sheet(item: $activeMealTypeCapture, onDismiss: clearPendingCapture) { capture in
-                CaptureMealTypeSheet(
-                    image: capture.image,
+            .sheet(item: $activeCaptureSession, onDismiss: clearPendingCapture) { capture in
+                CaptureSessionView(
+                    initialImage: capture.initialImage,
                     mealTypes: mealTypes,
                     loggedAt: capture.loggedAt,
-                    onSave: savePendingCapture,
+                    initialMealTypeID: capture.suggestedMealTypeID,
+                    onSave: saveCaptureSession,
                     onCancel: clearPendingCapture,
-                    selectedMealTypeID: $selectedMealTypeID
                 )
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
@@ -187,6 +203,13 @@ struct HistoryView: View {
             .sheet(isPresented: $isShowingSyncDiagnostics) {
                 NavigationStack {
                     PhotoSyncDiagnosticsView(syncStatus: syncStatus)
+                }
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+            }
+            .sheet(isPresented: $isShowingAISettings) {
+                NavigationStack {
+                    AISettingsView()
                 }
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
@@ -321,6 +344,12 @@ struct HistoryView: View {
             }
         }
 
+        ToolbarItem(placement: .topBarLeading) {
+            Button("AI Settings") {
+                isShowingAISettings = true
+            }
+        }
+
         ToolbarItem(placement: .topBarTrailing) {
             Button("Add") {
                 isShowingCaptureSource = true
@@ -390,19 +419,21 @@ struct HistoryView: View {
     }
 
     private func beginIngest(with image: PlatformImage) {
-        let capture = PendingCapture(image: image, loggedAt: Date.now)
-        stagedCapture = capture
+        let loggedAt = Date.now
 
         do {
-            selectedMealTypeID = try service.suggestedMealType(for: capture.loggedAt)?.id
-            if selectedMealTypeID == nil {
-                selectedMealTypeID = mealTypes.first?.id
-            }
+            let suggestedMealTypeID = try service.suggestedMealType(for: loggedAt)?.id ?? mealTypes.first?.id
+            let capture = PendingCaptureSession(
+                initialImage: image,
+                loggedAt: loggedAt,
+                suggestedMealTypeID: suggestedMealTypeID
+            )
+            stagedCaptureSession = capture
 
             if activeCaptureSource == nil {
-                activeMealTypeCapture = capture
+                activeCaptureSession = capture
             } else {
-                shouldShowMealTypeChooserAfterCaptureDismiss = true
+                shouldShowCaptureSessionAfterDismiss = true
             }
         } catch {
             ingestErrorMessage = error.localizedDescription
@@ -411,42 +442,42 @@ struct HistoryView: View {
     }
 
     private func handleCaptureDismissal() {
-        guard shouldShowMealTypeChooserAfterCaptureDismiss else {
+        guard shouldShowCaptureSessionAfterDismiss else {
             return
         }
 
-        shouldShowMealTypeChooserAfterCaptureDismiss = false
+        shouldShowCaptureSessionAfterDismiss = false
 
-        guard let stagedCapture else {
+        guard let stagedCaptureSession else {
             ingestErrorMessage = "Could not load the selected image. Please try again."
             return
         }
 
-        activeMealTypeCapture = stagedCapture
+        activeCaptureSession = stagedCaptureSession
     }
 
-    private func savePendingCapture() {
-        guard let capture = activeMealTypeCapture ?? stagedCapture else {
+    private func saveCaptureSession(_ payload: CaptureSessionPayload) {
+        guard !payload.images.isEmpty else {
             ingestErrorMessage = "Missing captured image"
             return
         }
 
-        guard let selectedMealTypeID else {
-            ingestErrorMessage = "Select a meal type before saving"
-            return
-        }
-
         do {
+            let hasAPIKey = hasConfiguredAPIKey()
+            let aiStatus: AIAnalysisStatus = hasAPIKey ? .pending : .none
             _ = try service.ingest(
-                image: capture.image,
-                mealTypeID: selectedMealTypeID,
-                loggedAt: capture.loggedAt
+                images: payload.images,
+                mealTypeID: payload.mealTypeID,
+                loggedAt: payload.loggedAt,
+                userNotes: payload.notes,
+                aiAnalysisStatus: aiStatus
             )
             clearPendingCapture()
             reconcileSelectionIfNeeded()
 
             Task {
                 await runPhotoSyncCycle()
+                await runFoodAnalysisCycle()
             }
         } catch {
             ingestErrorMessage = error.localizedDescription
@@ -454,10 +485,9 @@ struct HistoryView: View {
     }
 
     private func clearPendingCapture() {
-        stagedCapture = nil
-        activeMealTypeCapture = nil
-        selectedMealTypeID = nil
-        shouldShowMealTypeChooserAfterCaptureDismiss = false
+        stagedCaptureSession = nil
+        activeCaptureSession = nil
+        shouldShowCaptureSessionAfterDismiss = false
     }
 
     private func reconcileSelectionIfNeeded() {
@@ -498,6 +528,22 @@ struct HistoryView: View {
         isRunningPhotoSync = true
         defer { isRunningPhotoSync = false }
         await photoSyncService.runSyncCycle()
+    }
+
+    private func runFoodAnalysisCycle() async {
+        if isRunningFoodAnalysis {
+            return
+        }
+
+        isRunningFoodAnalysis = true
+        defer { isRunningFoodAnalysis = false }
+        await foodAnalysisCoordinator.processPendingMeals()
+    }
+
+    private func hasConfiguredAPIKey() -> Bool {
+        let key = (try? Dependencies.makeMistralAPIKeyStore().apiKey())?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return !key.isEmpty
     }
 }
 

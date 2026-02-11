@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 
 @MainActor
@@ -41,16 +42,79 @@ final class CapturePresentationUITests: XCTestCase {
         app.buttons["mock-camera-use-photo"].tap()
 
         XCTAssertTrue(waitForNonExistence(of: mockCameraRoot, timeout: 5))
-        XCTAssertTrue(app.buttons["capture-mealtype-cancel"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["capture-mealtype-save"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["capture-session-cancel"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["capture-session-save"].waitForExistence(timeout: 5))
+    }
+
+    func testBatchCaptureSaveCreatesMealWithTwoEntries() throws {
+        let app = launchApp()
+
+        openCaptureSession(app: app)
+
+        addMockPhotoToSession(app: app)
+        XCTAssertTrue(app.staticTexts["2 photos selected"].waitForExistence(timeout: 5))
+
+        let saveButton = app.buttons["capture-session-save"]
+        XCTAssertTrue(saveButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(saveButton.isEnabled)
+        saveButton.tap()
+
+        XCTAssertTrue(waitForNonExistence(of: app.otherElements["capture-session-root"], timeout: 10))
+    }
+
+    func testAddPhotoButtonHiddenAtEightPhotos() throws {
+        let app = launchApp()
+        openCaptureSession(app: app)
+
+        for _ in 0..<7 {
+            addMockPhotoToSession(app: app)
+        }
+
+        let identifiedAddButton = app.buttons["capture-session-add-photo"]
+        let titledAddButton = app.buttons["Add another photo"]
+        XCTAssertFalse(
+            identifiedAddButton.waitForExistence(timeout: 2) || titledAddButton.waitForExistence(timeout: 2)
+        )
     }
 
     private func launchApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments.append("--use-mock-camera-capture")
         app.launchEnvironment["FOODBUDDY_USE_MOCK_CAMERA_CAPTURE"] = "1"
+        app.launchArguments.append("--use-mock-food-recognition")
+        app.launchEnvironment["FOODBUDDY_USE_MOCK_FOOD_RECOGNITION"] = "1"
+        app.launchEnvironment["FOODBUDDY_MISTRAL_KEYCHAIN_SERVICE"] = "info.kupczynski.foodbuddy.uitests.\(UUID().uuidString)"
         app.launch()
         return app
+    }
+
+    private func openCaptureSession(app: XCUIApplication) {
+        app.buttons["Add"].tap()
+        app.buttons["Take Photo"].tap()
+        XCTAssertTrue(app.otherElements["mock-camera-root"].waitForExistence(timeout: 5))
+        app.buttons["mock-camera-use-photo"].tap()
+        XCTAssertTrue(app.otherElements["capture-session-root"].waitForExistence(timeout: 5))
+    }
+
+    private func tapAddAnotherPhoto(app: XCUIApplication) {
+        let identifiedButton = app.buttons["capture-session-add-photo"]
+        if identifiedButton.waitForExistence(timeout: 3) {
+            identifiedButton.tap()
+            return
+        }
+
+        let titledButton = app.buttons["Add another photo"]
+        XCTAssertTrue(titledButton.waitForExistence(timeout: 3))
+        titledButton.tap()
+    }
+
+    private func addMockPhotoToSession(app: XCUIApplication) {
+        tapAddAnotherPhoto(app: app)
+        XCTAssertTrue(app.buttons["Take Photo"].waitForExistence(timeout: 5))
+        app.buttons["Take Photo"].tap()
+        XCTAssertTrue(app.otherElements["mock-camera-root"].waitForExistence(timeout: 5))
+        app.buttons["mock-camera-use-photo"].tap()
+        XCTAssertTrue(app.otherElements["capture-session-root"].waitForExistence(timeout: 5))
     }
 
     private func assertCoversWindow(_ element: XCUIElement, window: XCUIElement) {

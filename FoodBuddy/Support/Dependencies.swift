@@ -1,3 +1,4 @@
+import Foundation
 import SwiftData
 
 enum Dependencies {
@@ -29,5 +30,40 @@ enum Dependencies {
             modelContext: modelContext,
             imageStore: makeImageStore()
         )
+    }
+
+    static func makeMistralAPIKeyStore() -> any MistralAPIKeyStoring {
+        KeychainMistralAPIKeyStore(service: mistralKeychainServiceName)
+    }
+
+    static func makeFoodRecognitionService(
+        apiKeyStore: (any MistralAPIKeyStoring)? = nil
+    ) -> any FoodRecognitionService {
+        if AppRuntimeFlags.useMockFoodRecognition {
+            return MockFoodRecognitionService(behavior: .success("Mock AI description"))
+        }
+
+        let resolvedAPIKeyStore = apiKeyStore ?? makeMistralAPIKeyStore()
+        return MistralFoodRecognitionService(apiKeyStore: resolvedAPIKeyStore)
+    }
+
+    @MainActor
+    static func makeFoodAnalysisCoordinator(modelContext: ModelContext) -> FoodAnalysisCoordinator {
+        let keyStore = makeMistralAPIKeyStore()
+        return FoodAnalysisCoordinator(
+            modelStore: FoodAnalysisModelStore(modelContext: modelContext),
+            imageStore: makeImageStore(),
+            foodRecognitionService: makeFoodRecognitionService(apiKeyStore: keyStore),
+            apiKeyStore: keyStore
+        )
+    }
+
+    private static var mistralKeychainServiceName: String {
+        let env = ProcessInfo.processInfo.environment["FOODBUDDY_MISTRAL_KEYCHAIN_SERVICE"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if let env, !env.isEmpty {
+            return env
+        }
+        return "info.kupczynski.foodbuddy"
     }
 }

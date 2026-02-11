@@ -1,6 +1,6 @@
 import Foundation
 
-struct ImageStore {
+struct ImageStore: @unchecked Sendable {
     enum Error: Swift.Error {
         case imageEncodingFailed
     }
