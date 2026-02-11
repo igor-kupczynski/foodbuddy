@@ -33,7 +33,7 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
 
         let bodyData = try XCTUnwrap(extractBodyData(from: request))
         let bodyObject = try XCTUnwrap(try JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
-        XCTAssertEqual(bodyObject["model"] as? String, "mistral-large-3-25-12")
+        XCTAssertEqual(bodyObject["model"] as? String, "mistral-large-latest")
 
         let messages = try XCTUnwrap(bodyObject["messages"] as? [[String: Any]])
         XCTAssertEqual(messages.count, 2)

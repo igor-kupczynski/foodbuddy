@@ -3,7 +3,7 @@ import Foundation
 struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendable {
     private enum Constants {
         static let endpoint = URL(string: "https://api.mistral.ai/v1/chat/completions")
-        static let model = "mistral-large-3-25-12"
+        static let model = "mistral-large-latest"
         static let systemPrompt = """
         You are a food-logging assistant. The user sends photos from a single
         meal, possibly with notes for context.

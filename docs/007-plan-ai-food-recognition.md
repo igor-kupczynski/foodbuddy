@@ -18,7 +18,7 @@ Apple provides no developer-facing VLM API. Visual Intelligence is user-facing o
 
 ### AI provider
 
-**Mistral Large 3** (`mistral-large-3-25-12`) — 675B sparse MoE model (41B active parameters) with native vision encoder. Supports multiple images per request, base64 image input, and enforced JSON schema output.
+**Mistral Large 3** (`mistral-large-latest`) — 675B sparse MoE model (41B active parameters) with native vision encoder. Supports multiple images per request, base64 image input, and enforced JSON schema output.
 
 - API: `POST https://api.mistral.ai/v1/chat/completions`
 - Auth: `Authorization: Bearer $MISTRAL_API_KEY`
@@ -271,7 +271,7 @@ This is the first REST API client in the app (existing networking is CloudKit on
 - Sends `POST /v1/chat/completions` with system prompt + `response_format` (json_schema, strict)
 - Decodes JSON response with defensive parsing (see section 5)
 - Throws typed errors: `networkError`, `httpError(statusCode)`, `decodingError`, `noAPIKey`
-- Uses pinned model ID (`mistral-large-3-25-12`) for production stability, not `-latest` alias
+- Uses `mistral-large-latest` alias for forward-compatibility when Mistral retires versioned IDs
 
 ### MockFoodRecognitionService
 
@@ -386,7 +386,7 @@ New tests in `FoodBuddyCoreTests`:
 - **MistralFoodRecognitionService builds correct request JSON**: Inject a mock `URLProtocol` that captures the outgoing `URLRequest`. Call `describe(images:notes:)` with 2 JPEG blobs + a note string. Assert:
   - URL is `https://api.mistral.ai/v1/chat/completions`
   - `Authorization` header is `Bearer <key>`
-  - Body JSON contains `model: "mistral-large-3-25-12"`
+  - Body JSON contains `model: "mistral-large-latest"`
   - `messages[0].role == "system"` with the food-logging prompt
   - `messages[1].content` array has 2 `image_url` blocks + 1 text block with `"Additional context: ..."`
   - `response_format.json_schema.strict == true`
