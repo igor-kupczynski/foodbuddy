@@ -31,11 +31,13 @@ DQS uses **11 food categories** (7 high-quality, 4 low-quality). Each meal conta
 
 ### DQS Special Rules
 
+The original DQS has some rules that produce standalone point penalties outside the 11-category system (e.g. condiment -1, latte -1/-2). Our implementation simplifies these by mapping everything to the nearest existing category — this is a DQS-inspired approximation, not a strict reproduction. The AI prompt below reflects these simplifications.
+
 - **Double-counting**: Some foods belong to two categories simultaneously. Score them in both. Sweetened yogurt = 1 dairy + 1 sweet. Honey Nut Cheerios = 1 refined grain + 1 sweet. Ice cream = 1 dairy + 1 sweet. A food is a sweet *and* its primary category if sugar is a top-2 ingredient.
-- **Condiments/sauces**: Used sparingly on high-quality foods — don't score. Used generously or as a major component (mayo on fries, BBQ sauce smothered on ribs) — score as -1 in addition to the base food. Genuinely healthy condiments (homemade guacamole) — score as appropriate high-quality category.
-- **Alcohol**: Moderate consumption (1 drink/day women, 2/day men) — don't score. Each drink beyond moderation: -2 per drink.
-- **Coffee/tea**: Unsweetened or lightly sweetened — don't score. Lattes or drinks with lots of milk/creamer/sugary syrup: -1 or -2 depending on size and additions.
-- **Sports nutrition during exercise**: Don't include in DQS at all. Energy bars outside exercise: whole-food bars (nuts, fruit, grains) = 1st serving +1, 2nd -1, additional -2. Candy-like bars: 1st serving -1, additional -2.
+- **Condiments/sauces**: Used sparingly on high-quality foods — don't score. Used generously — classify as the nearest low-quality category (mayo → fatty_proteins, sugary BBQ sauce → sweets). Genuinely healthy condiments (homemade guacamole) — score as appropriate high-quality category.
+- **Alcohol**: Moderate consumption (1 drink/day women, 2/day men) — don't score. Each drink beyond moderation — classify as sweets.
+- **Coffee/tea**: Unsweetened or lightly sweetened — don't score. Lattes or heavily sweetened drinks — classify as sweets (and dairy if significant milk).
+- **Sports nutrition during exercise**: Don't include in DQS at all. Energy bars eaten outside exercise — classify by primary ingredients (nuts_and_seeds + sweets, or whole_grains + sweets, etc.).
 - **Combination foods**: Break into components. Pizza (2 slices) = 1 refined grains (crust) + 0.5–1 vegetables (sauce) + 1 dairy (cheese) + 1 fatty proteins (pepperoni).
 
 ## Goal
@@ -85,6 +87,18 @@ Existing meals get `foodItems: []` after migration — they won't have DQS data 
 
 Register `FoodItem.self` in `PersistenceController.swift`'s schema array.
 
+### Meal lifecycle change
+
+`MealService.deleteMealIfEmpty()` (`FoodBuddy/Services/MealService.swift:56`) currently deletes a meal when `entries.isEmpty`. This is called when an entry is deleted or reassigned to another meal (`MealEntryService` lines 247, 297, 338). With DQS, a meal can have zero photo entries but still hold manually-added food items. The guard must change to:
+```swift
+func deleteMealIfEmpty(_ meal: Meal) {
+    if meal.entries.isEmpty && meal.foodItems.isEmpty {
+        modelContext.delete(meal)
+    }
+}
+```
+Without this, deleting the last photo entry from a meal would cascade-delete its food items.
+
 ### DQSCategory enum
 
 New file `FoodBuddy/Domain/DQSCategory.swift`. Follow the `AIAnalysisStatus` pattern (`FoodBuddy/Domain/AIAnalysisStatus.swift`) — enum with `rawValue: String`, stored as raw string on the model.
@@ -101,7 +115,7 @@ Computed properties: `displayName: String`, `isHighQuality: Bool`
 
 New file `FoodBuddy/Services/DQSScoringEngine.swift` — pure stateless struct, no dependencies, trivially testable.
 
-Uses the **exact per-category scoring tables**:
+Uses the **per-category scoring tables**:
 
 | Category | 1st | 2nd | 3rd | 4th | 5th | 6th+ |
 |----------|:---:|:---:|:---:|:---:|:---:|:----:|
@@ -117,7 +131,7 @@ Uses the **exact per-category scoring tables**:
 | Fried foods | -2 | -2 | -2 | -2 | -2 | -2 |
 | Fatty proteins | -1 | -1 | -2 | -2 | -2 | -2 |
 
-Each category has a `scoringTable: [Int]` array (6 entries for 1st–6th+ serving). `pointsForServings(category:servings:)` iterates through whole servings summing per-serving points. Fractional servings round to nearest whole.
+Each category has a `scoringTable: [Int]` array (6 entries for 1st–6th+ serving). `pointsForServings(category:servings:)` iterates through whole servings summing per-serving points. Fractional servings use schoolbook rounding (0.5 rounds up): `Int(servings.rounded(.toNearestOrAwayFromZero))`. This avoids Swift's default banker's rounding which would round 0.5 to 0 and 2.5 to 2.
 
 Score interpretation (for UI display):
 
@@ -298,6 +312,7 @@ Update `MockFoodRecognitionService` — add `analyze()` with a new `Behavior` ca
 - [ ] Create `FoodBuddy/Domain/FoodItem.swift`
 - [ ] Modify `FoodBuddy/Domain/Meal.swift` — add `foodItems` relationship + init parameter
 - [ ] Modify `FoodBuddy/Support/PersistenceController.swift` — add `FoodItem.self` to schema
+- [ ] Modify `FoodBuddy/Services/MealService.swift` — change `deleteMealIfEmpty` guard to `entries.isEmpty && foodItems.isEmpty` (see Meal lifecycle change above)
 - [ ] Create `FoodBuddy/Services/DQSScoringEngine.swift`
 - [ ] Create `FoodBuddyCoreTests/DQSScoringEngineTests.swift` — test every category at boundary servings (0, 1, 3, 5, 6+), empty input, multi-category aggregation, fractional servings rounding
 
