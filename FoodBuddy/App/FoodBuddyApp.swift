@@ -10,6 +10,7 @@ struct FoodBuddyApp: App {
         let setup = PersistenceController.makeContainerWithSyncStatus()
         modelContainer = setup.container
         syncStatus = setup.syncStatus
+        DQSFixtureSeeder.seedIfRequested(in: modelContainer)
     }
 
     var body: some Scene {

@@ -48,14 +48,58 @@ final class FoodAnalysisModelStore {
     }
 
     func markCompleted(mealID: UUID, description: String) throws {
+        try markCompletedWithFoodItems(mealID: mealID, description: description, foodItems: [])
+    }
+
+    func markCompletedWithFoodItems(
+        mealID: UUID,
+        description: String,
+        foodItems: [AIFoodItem]
+    ) throws {
         guard let meal = try fetchMeal(id: mealID) else {
             return
+        }
+
+        let now = Date.now
+        let aiManagedItems = meal.foodItems.filter { !$0.isManual }
+        for existing in aiManagedItems {
+            modelContext.delete(existing)
+        }
+
+        for analyzedItem in foodItems {
+            let name = analyzedItem.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty, analyzedItem.servings > 0 else {
+                continue
+            }
+
+            var insertedCategories = Set<DQSCategory>()
+            for rawCategory in analyzedItem.categories {
+                guard let category = DQSCategory(apiIdentifier: rawCategory) else {
+                    continue
+                }
+                if !insertedCategories.insert(category).inserted {
+                    continue
+                }
+
+                modelContext.insert(
+                    FoodItem(
+                        mealId: meal.id,
+                        name: name,
+                        categoryRawValue: category.rawValue,
+                        servings: analyzedItem.servings,
+                        isManual: false,
+                        createdAt: now,
+                        updatedAt: now,
+                        meal: meal
+                    )
+                )
+            }
         }
 
         meal.aiDescription = description
         meal.aiAnalysisErrorDetails = nil
         meal.aiAnalysisStatus = .completed
-        meal.updatedAt = .now
+        meal.updatedAt = now
         try save()
     }
 

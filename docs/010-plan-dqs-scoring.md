@@ -1,5 +1,7 @@
 # Plan 010: Diet Quality Score (DQS) Logging
 
+Status: Completed on 2026-02-18.
+
 ## Context
 
 FoodBuddy captures meal photos and generates AI text descriptions via Mistral. We want to expand the app to compute a **Diet Quality Score (DQS)** per day — a scoring system inspired by the book *Racing Weight* by Matt Fitzgerald. DQS is a simple daily metric: assign point values to every food you consume, then sum them up. Higher score = healthier diet. The system rewards *variety* of wholesome foods and penalizes overconsumption of any single category, even healthy ones.
@@ -308,52 +310,52 @@ Update `MockFoodRecognitionService` — add `analyze()` with a new `Behavior` ca
 
 ### Phase 1 (M1): Domain Model + Scoring Engine
 
-- [ ] Create `FoodBuddy/Domain/DQSCategory.swift`
-- [ ] Create `FoodBuddy/Domain/FoodItem.swift`
-- [ ] Modify `FoodBuddy/Domain/Meal.swift` — add `foodItems` relationship + init parameter
-- [ ] Modify `FoodBuddy/Support/PersistenceController.swift` — add `FoodItem.self` to schema
-- [ ] Modify `FoodBuddy/Services/MealService.swift` — change `deleteMealIfEmpty` guard to `entries.isEmpty && foodItems.isEmpty` (see Meal lifecycle change above)
-- [ ] Create `FoodBuddy/Services/DQSScoringEngine.swift`
-- [ ] Create `FoodBuddyCoreTests/DQSScoringEngineTests.swift` — test every category at boundary servings (0, 1, 3, 5, 6+), empty input, multi-category aggregation, fractional servings rounding
-- [ ] Create `FoodBuddyCoreTests/MealServiceTests.swift` — verify `deleteMealIfEmpty` keeps meal when `foodItems` exist and deletes only when both `entries` and `foodItems` are empty
-- [ ] Extend `FoodBuddyCoreTests/MealEntryServiceTests.swift` (or equivalent integration test) — verify moving/deleting entries does not cascade-delete meal if it still has `foodItems`
+- [x] Create `FoodBuddy/Domain/DQSCategory.swift`
+- [x] Create `FoodBuddy/Domain/FoodItem.swift`
+- [x] Modify `FoodBuddy/Domain/Meal.swift` — add `foodItems` relationship + init parameter
+- [x] Modify `FoodBuddy/Support/PersistenceController.swift` — add `FoodItem.self` to schema
+- [x] Modify `FoodBuddy/Services/MealService.swift` — change `deleteMealIfEmpty` guard to `entries.isEmpty && foodItems.isEmpty` (see Meal lifecycle change above)
+- [x] Create `FoodBuddy/Services/DQSScoringEngine.swift`
+- [x] Create `FoodBuddyCoreTests/DQSScoringEngineTests.swift` — test every category at boundary servings (0, 1, 3, 5, 6+), empty input, multi-category aggregation, fractional servings rounding
+- [x] Create `FoodBuddyCoreTests/MealServiceTests.swift` — verify `deleteMealIfEmpty` keeps meal when `foodItems` exist and deletes only when both `entries` and `foodItems` are empty
+- [x] Extend `FoodBuddyCoreTests/MealEntryServiceTests.swift` (or equivalent integration test) — verify moving/deleting entries does not cascade-delete meal if it still has `foodItems`
 
 ### Phase 2 (M2): Enhanced AI Categorization
 
 The existing AI pipeline: `FoodAnalysisCoordinator` (`FoodBuddy/Services/FoodAnalysisCoordinator.swift`) calls `FoodRecognitionService.describe()` → `MistralFoodRecognitionService` (`FoodBuddy/Services/MistralFoodRecognitionService.swift`) sends photos to Mistral → returns text description → `FoodAnalysisModelStore` (`FoodBuddy/Services/FoodAnalysisModelStore.swift`) saves it on `Meal.aiDescription`.
 
-- [ ] Modify `FoodBuddy/Services/FoodRecognitionService.swift` — add `FoodAnalysisResult`, `AIFoodItem` types, `analyze()` protocol method, update `MockFoodRecognitionService`
-- [ ] Modify `FoodBuddy/Services/MistralFoodRecognitionService.swift` — replace system prompt and JSON schema as specified above. Generalize the schema encoding structs to support the nested `food_items` array. Implement `analyze()` method with parsing. Make `describe()` delegate to `analyze()`.
-- [ ] Modify `FoodBuddy/Services/FoodAnalysisModelStore.swift` — add `markCompletedWithFoodItems(mealID:description:foodItems:)`:
+- [x] Modify `FoodBuddy/Services/FoodRecognitionService.swift` — add `FoodAnalysisResult`, `AIFoodItem` types, `analyze()` protocol method, update `MockFoodRecognitionService`
+- [x] Modify `FoodBuddy/Services/MistralFoodRecognitionService.swift` — replace system prompt and JSON schema as specified above. Generalize the schema encoding structs to support the nested `food_items` array. Implement `analyze()` method with parsing. Make `describe()` delegate to `analyze()`.
+- [x] Modify `FoodBuddy/Services/FoodAnalysisModelStore.swift` — add `markCompletedWithFoodItems(mealID:description:foodItems:)`:
   1. Sets `aiDescription` (existing behavior)
   2. Deletes existing `FoodItem` records where `isManual == false` for the meal (re-analysis preserves manual edits)
   3. Creates new `FoodItem` records — one per category per food (expanding double-counted items into separate records)
   4. Maps snake_case API category strings to `DQSCategory` enum values
-- [ ] Modify `FoodBuddy/Services/FoodAnalysisCoordinator.swift` — in `processPendingMeals()`, call `analyze()` instead of `describe()`, call `markCompletedWithFoodItems()` instead of `markCompleted()`
-- [ ] Extend `FoodBuddyCoreTests/MistralFoodRecognitionServiceTests.swift` — verify new schema in request JSON, parse response with `food_items`, handle empty food_items, skip items with unknown category strings
-- [ ] Extend `FoodBuddyCoreTests/FoodAnalysisCoordinatorTests.swift` — verify `FoodItem` records created after analysis, verify re-analysis replaces AI items but preserves manual items
-- [ ] Create/extend `FoodBuddyCoreTests/FoodAnalysisModelStoreTests.swift` — verify snake_case→`DQSCategory` mapping, double-count expansion (one input item -> multiple `FoodItem` rows), unknown category drop, and non-manual replacement semantics
+- [x] Modify `FoodBuddy/Services/FoodAnalysisCoordinator.swift` — in `processPendingMeals()`, call `analyze()` instead of `describe()`, call `markCompletedWithFoodItems()` instead of `markCompleted()`
+- [x] Extend `FoodBuddyCoreTests/MistralFoodRecognitionServiceTests.swift` — verify new schema in request JSON, parse response with `food_items`, handle empty food_items, skip items with unknown category strings
+- [x] Extend `FoodBuddyCoreTests/FoodAnalysisCoordinatorTests.swift` — verify `FoodItem` records created after analysis, verify re-analysis replaces AI items but preserves manual items
+- [x] Create/extend `FoodBuddyCoreTests/FoodAnalysisModelStoreTests.swift` — verify snake_case→`DQSCategory` mapping, double-count expansion (one input item -> multiple `FoodItem` rows), unknown category drop, and non-manual replacement semantics
 
 ### Phase 3 (M3): Daily DQS View + Food Item Editing UI
 
-- [ ] Create `FoodBuddy/Services/FoodItemService.swift` — CRUD service following `MealEntryService` pattern (`FoodBuddy/Services/MealEntryService.swift`): takes `ModelContext`, methods throw. Methods:
+- [x] Create `FoodBuddy/Services/FoodItemService.swift` — CRUD service following `MealEntryService` pattern (`FoodBuddy/Services/MealEntryService.swift`): takes `ModelContext`, methods throw. Methods:
   - `createFoodItem(mealID:name:category:servings:isManual:)`
   - `updateFoodItem(_:name:category:servings:)` — sets `isManual = true`
   - `deleteFoodItem(_:)`
   - `foodItems(forMealIDs:)` — fetch for daily aggregation
-- [ ] Modify `FoodBuddy/Support/Dependencies.swift` — add `makeFoodItemService(modelContext:)` factory (follow existing `makeMealEntryService` pattern)
-- [ ] Create `FoodBuddy/Features/DQS/DailyScoreBadge.swift` — compact score view (colored number). Colors: green (>=21), yellow (11–20), orange (1–10), red (<=0).
-- [ ] Create `FoodBuddy/Features/DQS/DailyDQSView.swift` — reached via `NavigationLink` from day section header in HistoryView. Shows:
+- [x] Modify `FoodBuddy/Support/Dependencies.swift` — add `makeFoodItemService(modelContext:)` factory (follow existing `makeMealEntryService` pattern)
+- [x] Create `FoodBuddy/Features/DQS/DailyScoreBadge.swift` — compact score view (colored number). Colors: green (>=21), yellow (11–20), orange (1–10), red (<=0).
+- [x] Create `FoodBuddy/Features/DQS/DailyDQSView.swift` — reached via `NavigationLink` from day section header in HistoryView. Shows:
   - Date + total score with color + interpretation label
   - "High Quality" section: rows for each category with serving count + points
   - "Low Quality" section: same
   - "Food Items" section: grouped by meal (meal type name as sub-header), each item shows name + category pill + servings, tappable to edit
   - Footer: "Inspired by *Racing Weight* by Matt Fitzgerald"
-- [ ] Create `FoodBuddy/Features/DQS/FoodItemEditView.swift` — presented as sheet. Fields: name (TextField), category (Picker over all DQSCategory cases), servings (Stepper, 0.5 increments, min 0.5), delete button with confirmation.
-- [ ] Modify `FoodBuddy/Features/History/HistoryView.swift` — refactor the flat meal list into day-grouped sections. Currently `compactHistoryView` and `regularHistoryView` use `ForEach(meals)`. Change to:
+- [x] Create `FoodBuddy/Features/DQS/FoodItemEditView.swift` — reusable edit form presented from food-item rows. Fields: name (TextField), category (Picker over all DQSCategory cases), servings (Stepper, 0.5 increments, min 0.5), delete button with confirmation.
+- [x] Modify `FoodBuddy/Features/History/HistoryView.swift` — refactor the flat meal list into day-grouped sections. Currently `compactHistoryView` and `regularHistoryView` use `ForEach(meals)`. Change to:
   - Compute day groups from `meals` using `Calendar.current.startOfDay(for: meal.createdAt)` (matches existing `MealService` day logic)
   - `ForEach(dayGroups)` → Section with header showing date + `DailyScoreBadge` as `NavigationLink` to `DailyDQSView` → inner `ForEach(mealsInDay)` with existing `MealRowView`
-- [ ] Modify `FoodBuddy/Features/History/MealDetailView.swift` — add "Food Items" section below AI description. Shows food items for this meal, grouped by name for double-counted items:
+- [x] Modify `FoodBuddy/Features/History/MealDetailView.swift` — add "Food Items" section below AI description. Shows food items for this meal, grouped by name for double-counted items:
   ```
   FOOD ITEMS
   Oatmeal           Whole Grains   1 srv
@@ -364,32 +366,32 @@ The existing AI pipeline: `FoodAnalysisCoordinator` (`FoodBuddy/Services/FoodAna
                        [+ Add Item]
   ```
   Each row tappable → `FoodItemEditView` sheet.
-- [ ] Add deterministic accessibility identifiers for DQS surfaces (day score badge/link, category rows, food item rows, add/edit/save/delete actions) so UI tests can drive and assert behavior without label-string coupling
-- [ ] Create `FoodBuddyUITests/DQSFlowUITests.swift` — with mock food recognition enabled, verify history day header shows score badge, navigation to `DailyDQSView`, and category/total rendering for known fixture data
+- [x] Add deterministic accessibility identifiers for DQS surfaces (day score badge/link, category rows, food item rows, add/edit/save/delete actions) so UI tests can drive and assert behavior without label-string coupling
+- [x] Create `FoodBuddyUITests/DQSFlowUITests.swift` — with mock food recognition enabled, verify history day header shows score badge, navigation to `DailyDQSView`, and category/total rendering for known fixture data
 
 ### Phase 4 (M4): Manual Entry + Polish + Attribution
 
-- [ ] Create `FoodBuddy/Features/DQS/ManualFoodItemSheet.swift` — add food item without photos: name, category, servings. When navigated from MealDetailView, attach to that meal. When from DailyDQSView, show meal type picker and use/create meal for that day+type (follow `MealService.meal(for:loggedAt:)` pattern in `FoodBuddy/Services/MealService.swift`).
-- [ ] Add "+ Add Food Item" button to `DailyDQSView` and `MealDetailView` food items section
-- [ ] Extend `FoodBuddyUITests/DQSFlowUITests.swift` — verify add/edit/delete food item flows and that daily total updates after each mutation
-- [ ] Add UI-test fixture controls (launch arguments/env) to seed deterministic DQS sample data and isolate keychain/service state per test run
-- [ ] Update `README.md` — add DQS feature description with Racing Weight attribution
-- [ ] Update `AGENTS.md` with any lessons learned
+- [x] Create `FoodBuddy/Features/DQS/ManualFoodItemSheet.swift` — add food item without photos: name, category, servings. When navigated from MealDetailView, attach to that meal. When from DailyDQSView, show meal type picker and use/create meal for that day+type (follow `MealService.meal(for:loggedAt:)` pattern in `FoodBuddy/Services/MealService.swift`).
+- [x] Add "+ Add Food Item" button to `DailyDQSView` and `MealDetailView` food items section
+- [x] Extend `FoodBuddyUITests/DQSFlowUITests.swift` — verify add/edit/delete food item flows and that daily total updates after each mutation
+- [x] Add UI-test fixture controls (launch arguments/env) to seed deterministic DQS sample data and isolate keychain/service state per test run
+- [x] Update `README.md` — add DQS feature description with Racing Weight attribution
+- [x] Update `AGENTS.md` with any lessons learned
 
 ## Acceptance Criteria
 
-- [ ] `FoodItem` model persists via SwiftData, syncs via CloudKit, cascade-deletes with Meal
-- [ ] DQS scoring engine correctly computes scores for all 11 categories per the scoring table
-- [ ] AI analysis returns structured food items alongside text description
-- [ ] Daily DQS score displayed in HistoryView section headers, with detailed breakdown in DailyDQSView
-- [ ] Users can edit food item name, category, and servings
-- [ ] Users can manually add food items
-- [ ] Re-analysis replaces AI items but preserves manual edits
-- [ ] Racing Weight attribution visible in app and README
-- [ ] All existing + new unit tests pass on macOS
-- [ ] DQS UI flows (view, add, edit, delete, score recompute) are covered by simulator UI tests and pass in CI/local automation
-- [ ] iOS build succeeds with `CODE_SIGNING_ALLOWED=NO`
-- [ ] No blocking acceptance gate requires manual simulator interaction; manual runs are exploratory only
+- [x] `FoodItem` model persists via SwiftData, syncs via CloudKit, cascade-deletes with Meal
+- [x] DQS scoring engine correctly computes scores for all 11 categories per the scoring table
+- [x] AI analysis returns structured food items alongside text description
+- [x] Daily DQS score displayed in HistoryView section headers, with detailed breakdown in DailyDQSView
+- [x] Users can edit food item name, category, and servings
+- [x] Users can manually add food items
+- [x] Re-analysis replaces AI items but preserves manual edits
+- [x] Racing Weight attribution visible in app and README
+- [x] All existing + new unit tests pass on macOS
+- [x] DQS UI flows (view, add, edit, delete, score recompute) are covered by simulator UI tests and pass in CI/local automation
+- [x] iOS build succeeds with `CODE_SIGNING_ALLOWED=NO`
+- [x] No blocking acceptance gate requires manual simulator interaction; manual runs are exploratory only
 
 ## Verification
 

@@ -54,7 +54,7 @@ final class MealService {
     }
 
     func deleteMealIfEmpty(_ meal: Meal) {
-        if meal.entries.isEmpty {
+        if meal.entries.isEmpty && meal.foodItems.isEmpty {
             modelContext.delete(meal)
         }
     }

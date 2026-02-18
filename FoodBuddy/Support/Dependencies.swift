@@ -32,6 +32,11 @@ enum Dependencies {
         )
     }
 
+    @MainActor
+    static func makeFoodItemService(modelContext: ModelContext) -> FoodItemService {
+        FoodItemService(modelContext: modelContext)
+    }
+
     static func makeMistralAPIKeyStore() -> any MistralAPIKeyStoring {
         KeychainMistralAPIKeyStore(service: mistralKeychainServiceName)
     }
@@ -40,7 +45,14 @@ enum Dependencies {
         apiKeyStore: (any MistralAPIKeyStoring)? = nil
     ) -> any FoodRecognitionService {
         if AppRuntimeFlags.useMockFoodRecognition {
-            return MockFoodRecognitionService(behavior: .success("Mock AI description"))
+            return MockFoodRecognitionService(
+                behavior: .success(
+                    FoodAnalysisResult(
+                        description: "Mock AI description",
+                        foodItems: []
+                    )
+                )
+            )
         }
 
         let resolvedAPIKeyStore = apiKeyStore ?? makeMistralAPIKeyStore()

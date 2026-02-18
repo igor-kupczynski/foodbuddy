@@ -402,6 +402,84 @@ final class MealEntryServiceTests: XCTestCase {
         XCTAssertNil(meal.aiDescription)
     }
 
+    func testDeleteEntryKeepsMealWhenMealHasFoodItems() throws {
+        let harness = try TestHarness.make()
+        defer { harness.cleanup() }
+
+        let service = harness.makeService(nowDates: [Date(timeIntervalSince1970: 100)])
+        try service.bootstrapMealTypesIfNeeded()
+        let breakfast = try XCTUnwrap(try mealType(named: "Breakfast", service: service))
+
+        let entry = try service.ingest(
+            image: TestImageFactory.make(color: .systemBlue),
+            mealTypeID: breakfast.id,
+            loggedAt: Date(timeIntervalSince1970: 100)
+        )
+        let meal = try XCTUnwrap(entry.meal)
+
+        harness.modelContext.insert(
+            FoodItem(
+                mealId: meal.id,
+                name: "Apple",
+                categoryRawValue: DQSCategory.fruits.rawValue,
+                isManual: true,
+                meal: meal
+            )
+        )
+        try harness.modelContext.save()
+
+        try service.delete(entry: entry)
+
+        let meals = try harness.fetchMeals()
+        XCTAssertEqual(meals.count, 1)
+        XCTAssertEqual(meals[0].entries.count, 0)
+        XCTAssertEqual(meals[0].foodItems.count, 1)
+    }
+
+    func testReassignMealTypeKeepsSourceMealWhenFoodItemsRemain() throws {
+        let harness = try TestHarness.make()
+        defer { harness.cleanup() }
+
+        let service = harness.makeService(nowDates: [
+            Date(timeIntervalSince1970: 100),
+            Date(timeIntervalSince1970: 200),
+            Date(timeIntervalSince1970: 300)
+        ])
+        try service.bootstrapMealTypesIfNeeded()
+        let breakfast = try XCTUnwrap(try mealType(named: "Breakfast", service: service))
+        let lunch = try XCTUnwrap(try mealType(named: "Lunch", service: service))
+
+        let entry = try service.ingest(
+            image: TestImageFactory.make(color: .systemPink),
+            mealTypeID: breakfast.id,
+            loggedAt: makeDate(dayOffset: 0, hour: 8, minute: 0)
+        )
+        _ = try service.ingest(
+            image: TestImageFactory.make(color: .systemBrown),
+            mealTypeID: lunch.id,
+            loggedAt: makeDate(dayOffset: 0, hour: 12, minute: 0)
+        )
+
+        let sourceMeal = try XCTUnwrap(entry.meal)
+        harness.modelContext.insert(
+            FoodItem(
+                mealId: sourceMeal.id,
+                name: "Manual item",
+                categoryRawValue: DQSCategory.vegetables.rawValue,
+                isManual: true,
+                meal: sourceMeal
+            )
+        )
+        try harness.modelContext.save()
+
+        _ = try service.reassignMealType(entry: entry, to: lunch.id)
+
+        let meals = try harness.fetchMeals()
+        let refreshedSourceMeal = try XCTUnwrap(meals.first(where: { $0.id == sourceMeal.id }))
+        XCTAssertEqual(refreshedSourceMeal.entries.count, 0)
+        XCTAssertEqual(refreshedSourceMeal.foodItems.count, 1)
+    }
+
     private func mealType(named name: String, service: MealEntryService) throws -> MealType? {
         try service.listMealTypes().first(where: { $0.displayName == name })
     }
@@ -423,7 +501,7 @@ private final class TestHarness {
 
     static func make() throws -> TestHarness {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let schema = Schema([Meal.self, MealEntry.self, EntryPhotoAsset.self, MealType.self])
+        let schema = Schema([Meal.self, MealEntry.self, EntryPhotoAsset.self, MealType.self, FoodItem.self])
         let container = try ModelContainer(for: schema, configurations: config)
         let context = ModelContext(container)
 

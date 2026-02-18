@@ -9,6 +9,7 @@ Iteration `004` from `docs/004-plan-ipad-adaptive-ui.md` is implemented (adaptiv
 Iteration `005` from `docs/005-plan-viewport-capture-reassignment.md` is implemented (viewport/capture reliability + meal-type reassignment).
 Iteration `006` from `docs/006-plan-capture-sheet-blank-first-pick.md` is implemented.
 Iteration `007` from `docs/007-plan-ai-food-recognition.md` is implemented for local/mock validation; physical iPhone + real API-key validation remains pending.
+Iteration `010` from `docs/010-plan-dqs-scoring.md` is implemented.
 
 Implemented features:
 
@@ -34,7 +35,12 @@ Implemented features:
 - Mistral REST client with strict JSON-schema response format, defensive parsing, and mockable recognition service.
 - AI settings screen with Keychain-backed Mistral API key storage.
 - Meal detail AI states (`none/pending/analyzing/completed/failed`) with manual re-analyze flow.
+- Diet Quality Score (DQS) logging with AI-categorized food items, per-day score breakdowns, and manual add/edit/delete controls.
 - Automated verifier covering preprocessing bounds, ingest-to-pending queue behavior, upload state transitions, retry recovery, and hydration.
+
+## Diet Quality Score Attribution
+
+The DQS feature is inspired by *Racing Weight* by Matt Fitzgerald.
 
 ## Development Requirements
 
@@ -81,6 +87,9 @@ xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'pla
 
 # Capture presentation UI regression tests (mock camera path)
 xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddyUITests -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:FoodBuddyUITests/CapturePresentationUITests | xcbeautify
+
+# DQS flow UI regression tests (score view + add/edit/delete)
+xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddyUITests -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:FoodBuddyUITests/DQSFlowUITests | xcbeautify
 
 # Verify local-phone scheme also builds
 xcodebuild build -project FoodBuddy.xcodeproj -scheme FoodBuddyDev -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO | xcbeautify

@@ -166,7 +166,7 @@ private final class SyncTestHarness {
 
     static func make() throws -> SyncTestHarness {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let schema = Schema([Meal.self, MealEntry.self, EntryPhotoAsset.self, MealType.self])
+        let schema = Schema([Meal.self, MealEntry.self, EntryPhotoAsset.self, MealType.self, FoodItem.self])
         let container = try ModelContainer(for: schema, configurations: config)
         let context = ModelContext(container)
 

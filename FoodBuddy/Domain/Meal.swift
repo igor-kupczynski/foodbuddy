@@ -15,6 +15,9 @@ final class Meal: Identifiable, UpdatedAtVersioned {
     @Relationship(deleteRule: .cascade, inverse: \MealEntry.meal)
     var entries: [MealEntry] = []
 
+    @Relationship(deleteRule: .cascade, inverse: \FoodItem.meal)
+    var foodItems: [FoodItem] = []
+
     var aiAnalysisStatus: AIAnalysisStatus {
         get {
             AIAnalysisStatus(rawValue: aiAnalysisStatusRawValue) ?? .none
@@ -33,7 +36,8 @@ final class Meal: Identifiable, UpdatedAtVersioned {
         userNotes: String? = nil,
         aiAnalysisErrorDetails: String? = nil,
         aiAnalysisStatusRawValue: String = AIAnalysisStatus.none.rawValue,
-        entries: [MealEntry] = []
+        entries: [MealEntry] = [],
+        foodItems: [FoodItem] = []
     ) {
         self.id = id
         self.typeId = typeId
@@ -44,5 +48,6 @@ final class Meal: Identifiable, UpdatedAtVersioned {
         self.aiAnalysisErrorDetails = aiAnalysisErrorDetails
         self.aiAnalysisStatusRawValue = aiAnalysisStatusRawValue
         self.entries = entries
+        self.foodItems = foodItems
     }
 }

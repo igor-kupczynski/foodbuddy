@@ -53,12 +53,16 @@ actor FoodAnalysisCoordinator {
 
             do {
                 let imageData = try loadImageData(filenames: pendingMeal.imageFilenames)
-                let description = try await foodRecognitionService.describe(
+                let analysis = try await foodRecognitionService.analyze(
                     images: imageData,
                     notes: pendingMeal.notes
                 )
                 try await MainActor.run {
-                    try modelStore.markCompleted(mealID: pendingMeal.mealID, description: description)
+                    try modelStore.markCompletedWithFoodItems(
+                        mealID: pendingMeal.mealID,
+                        description: analysis.description,
+                        foodItems: analysis.foodItems
+                    )
                 }
             } catch {
                 let details = buildErrorDetails(error: error, meal: pendingMeal)

@@ -2,6 +2,17 @@ import SwiftData
 import SwiftUI
 
 struct MealDetailView: View {
+    private struct FoodItemNameGroup: Identifiable {
+        let name: String
+        let items: [FoodItem]
+
+        var id: String { name }
+    }
+
+    private struct FoodItemEditTarget: Identifiable {
+        let id: UUID
+    }
+
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.modelContext) private var modelContext
 
@@ -13,6 +24,8 @@ struct MealDetailView: View {
     @State private var notesDraft = ""
     @State private var isRunningFoodAnalysis = false
     @State private var isShowingFailureDetails = false
+    @State private var isShowingManualFoodItemSheet = false
+    @State private var foodItemToEditTarget: FoodItemEditTarget?
 
     private var imageStore: ImageStore {
         Dependencies.makeImageStore()
@@ -40,6 +53,7 @@ struct MealDetailView: View {
     var body: some View {
         List {
             aiDescriptionSection
+            foodItemsSection
 
             if sortedEntries.isEmpty {
                 ContentUnavailableView(
@@ -79,10 +93,38 @@ struct MealDetailView: View {
         .sheet(isPresented: $isShowingFailureDetails) {
             AnalysisErrorDetailsSheet(details: meal.aiAnalysisErrorDetails ?? "No details available.")
         }
+        .sheet(isPresented: $isShowingManualFoodItemSheet) {
+            ManualFoodItemSheet(source: .meal(mealID: meal.id))
+        }
+        .sheet(item: $foodItemToEditTarget) { target in
+            if let item = foodItem(withID: target.id) {
+                NavigationStack {
+                    FoodItemEditView(foodItem: item)
+                }
+            } else {
+                Text("Food item unavailable.")
+                    .padding()
+            }
+        }
     }
 
     private var sortedEntries: [MealEntry] {
         meal.entries.sorted(by: { $0.loggedAt > $1.loggedAt })
+    }
+
+    private var foodItemGroups: [FoodItemNameGroup] {
+        let grouped = Dictionary(grouping: meal.foodItems) { item in
+            item.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        return grouped
+            .map { name, items in
+                FoodItemNameGroup(
+                    name: name,
+                    items: items.sorted(by: { $0.category.displayName < $1.category.displayName })
+                )
+            }
+            .sorted(by: { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending })
     }
 
     @ViewBuilder
@@ -135,6 +177,80 @@ struct MealDetailView: View {
         }
     }
 
+    @ViewBuilder
+    private var foodItemsSection: some View {
+        Section("Food Items") {
+            if foodItemGroups.isEmpty {
+                Text("No food items yet.")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(foodItemGroups) { group in
+                    if group.items.count == 1, let item = group.items.first {
+                        Button {
+                            foodItemToEditTarget = FoodItemEditTarget(id: item.id)
+                        } label: {
+                            singleFoodItemRow(item)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("dqs-food-item-row-\(item.id.uuidString)")
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(item.name)
+                        .accessibilityValue(
+                            "\(item.category.displayName), \(item.servings.formatted(.number.precision(.fractionLength(0...1)))) servings"
+                        )
+                    } else {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(group.name)
+                                .font(.subheadline.weight(.semibold))
+
+                            ForEach(group.items) { item in
+                                Button {
+                                    foodItemToEditTarget = FoodItemEditTarget(id: item.id)
+                                } label: {
+                                    groupedFoodItemRow(item)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("dqs-food-item-row-\(item.id.uuidString)")
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel("\(group.name), \(item.category.displayName)")
+                                .accessibilityValue(
+                                    "\(item.servings.formatted(.number.precision(.fractionLength(0...1)))) servings"
+                                )
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            }
+
+            Button("+ Add Food Item") {
+                isShowingManualFoodItemSheet = true
+            }
+            .accessibilityIdentifier("dqs-add-food-item")
+        }
+    }
+
+    private func singleFoodItemRow(_ item: FoodItem) -> some View {
+        HStack {
+            Text(item.name)
+            Spacer()
+            Text(item.category.displayName)
+                .foregroundStyle(.secondary)
+            Text("\(item.servings.formatted(.number.precision(.fractionLength(0...1)))) srv")
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func groupedFoodItemRow(_ item: FoodItem) -> some View {
+        HStack {
+            Text(item.category.displayName)
+            Spacer()
+            Text("\(item.servings.formatted(.number.precision(.fractionLength(0...1)))) srv")
+                .foregroundStyle(.secondary)
+        }
+        .padding(.leading, 12)
+    }
+
     private func deleteEntries(at offsets: IndexSet) {
         for index in offsets {
             let entry = sortedEntries[index]
@@ -181,6 +297,10 @@ struct MealDetailView: View {
         isRunningFoodAnalysis = true
         defer { isRunningFoodAnalysis = false }
         await foodAnalysisCoordinator.processPendingMeals()
+    }
+
+    private func foodItem(withID id: UUID) -> FoodItem? {
+        meal.foodItems.first(where: { $0.id == id })
     }
 }
 

@@ -10,8 +10,26 @@ enum PersistenceController {
             Meal.self,
             MealEntry.self,
             EntryPhotoAsset.self,
-            MealType.self
+            MealType.self,
+            FoodItem.self
         ])
+
+        if let suffix = AppRuntimeFlags.localStoreSuffix {
+            let localURL = URL.applicationSupportDirectory
+                .appending(path: "FoodBuddy-\(suffix).store")
+            let localConfiguration = ModelConfiguration(
+                schema: schema,
+                url: localURL,
+                cloudKitDatabase: .none
+            )
+
+            do {
+                let container = try ModelContainer(for: schema, configurations: [localConfiguration])
+                return (container, .localOnly(reason: "Using isolated local store configuration."))
+            } catch {
+                fatalError("Failed to create isolated SwiftData container: \(error)")
+            }
+        }
 
         let cloudConfiguration = ModelConfiguration(
             schema: schema,

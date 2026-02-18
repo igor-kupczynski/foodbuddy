@@ -20,28 +20,57 @@ enum FoodRecognitionServiceError: Swift.Error, Equatable, LocalizedError {
     }
 }
 
+struct FoodAnalysisResult: Sendable, Equatable {
+    let description: String
+    let foodItems: [AIFoodItem]
+}
+
+struct AIFoodItem: Sendable, Codable, Equatable {
+    let name: String
+    let categories: [String]
+    let servings: Double
+}
+
 protocol FoodRecognitionService: Sendable {
+    func analyze(images: [Data], notes: String?) async throws -> FoodAnalysisResult
     func describe(images: [Data], notes: String?) async throws -> String
+}
+
+extension FoodRecognitionService {
+    func describe(images: [Data], notes: String?) async throws -> String {
+        try await analyze(images: images, notes: notes).description
+    }
 }
 
 struct MockFoodRecognitionService: FoodRecognitionService {
     enum Behavior {
-        case success(String)
+        case success(FoodAnalysisResult)
         case failure(FoodRecognitionServiceError)
     }
 
     let behavior: Behavior
 
-    init(behavior: Behavior = .success("Meal description unavailable in mock mode.")) {
+    init(
+        behavior: Behavior = .success(
+            FoodAnalysisResult(
+                description: "Meal description unavailable in mock mode.",
+                foodItems: []
+            )
+        )
+    ) {
         self.behavior = behavior
     }
 
-    func describe(images: [Data], notes: String?) async throws -> String {
+    func analyze(images: [Data], notes: String?) async throws -> FoodAnalysisResult {
         switch behavior {
-        case .success(let description):
-            return description
+        case .success(let result):
+            return result
         case .failure(let error):
             throw error
         }
+    }
+
+    func describe(images: [Data], notes: String?) async throws -> String {
+        try await analyze(images: images, notes: notes).description
     }
 }

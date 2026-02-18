@@ -37,7 +37,7 @@ final class MealAIAnalysisStatusTests: XCTestCase {
 
     private func makeContainer() throws -> ModelContainer {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let schema = Schema([Meal.self, MealEntry.self, EntryPhotoAsset.self, MealType.self])
+        let schema = Schema([Meal.self, MealEntry.self, EntryPhotoAsset.self, MealType.self, FoodItem.self])
         return try ModelContainer(for: schema, configurations: configuration)
     }
 }

@@ -15,6 +15,13 @@ struct HistoryView: View {
         let suggestedMealTypeID: UUID?
     }
 
+    private struct DayGroup: Identifiable {
+        let day: Date
+        let meals: [Meal]
+
+        var id: Date { day }
+    }
+
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
 
@@ -105,6 +112,19 @@ struct HistoryView: View {
             return "Entries"
         }
         return mealTypeName(for: selectedMeal)
+    }
+
+    private var dayGroups: [DayGroup] {
+        let calendar = Calendar.current
+        let grouped = Dictionary(grouping: meals) { meal in
+            calendar.startOfDay(for: meal.createdAt)
+        }
+
+        return grouped
+            .map { day, mealsForDay in
+                DayGroup(day: day, meals: mealsForDay.sorted(by: { $0.updatedAt > $1.updatedAt }))
+            }
+            .sorted(by: { $0.day > $1.day })
     }
 
     var body: some View {
@@ -242,15 +262,21 @@ struct HistoryView: View {
                 emptyMealsView
                     .listRowSeparator(.hidden)
             } else {
-                ForEach(meals) { meal in
-                    NavigationLink {
-                        MealDetailView(
-                            meal: meal,
-                            mealTypeName: mealTypeName(for: meal),
-                            syncStatus: syncStatus
-                        )
-                    } label: {
-                        mealRow(for: meal)
+                ForEach(dayGroups) { dayGroup in
+                    Section {
+                        ForEach(dayGroup.meals) { meal in
+                            NavigationLink {
+                                MealDetailView(
+                                    meal: meal,
+                                    mealTypeName: mealTypeName(for: meal),
+                                    syncStatus: syncStatus
+                                )
+                            } label: {
+                                mealRow(for: meal)
+                            }
+                        }
+                    } header: {
+                        dayHeader(for: dayGroup)
                     }
                 }
             }
@@ -270,14 +296,18 @@ struct HistoryView: View {
                 }
                 .listRowSeparator(.hidden)
 
-                Section("Meals") {
-                    if meals.isEmpty {
-                        emptyMealsView
-                            .listRowSeparator(.hidden)
-                    } else {
-                        ForEach(meals) { meal in
-                            mealRow(for: meal)
-                                .tag(Optional(meal.id))
+                if meals.isEmpty {
+                    emptyMealsView
+                        .listRowSeparator(.hidden)
+                } else {
+                    ForEach(dayGroups) { dayGroup in
+                        Section {
+                            ForEach(dayGroup.meals) { meal in
+                                mealRow(for: meal)
+                                    .tag(Optional(meal.id))
+                            }
+                        } header: {
+                            dayHeader(for: dayGroup)
                         }
                     }
                 }
@@ -363,6 +393,29 @@ struct HistoryView: View {
             mealTypeName: mealTypeName(for: meal),
             imageStore: imageStore
         )
+    }
+
+    private func dayHeader(for dayGroup: DayGroup) -> some View {
+        let score = DQSScoringEngine().score(
+            for: dayGroup.day,
+            foodItems: dayGroup.meals.flatMap(\.foodItems)
+        )
+        let dayIdentifier = dayIdentifier(for: dayGroup.day)
+
+        return NavigationLink {
+            DailyDQSView(date: dayGroup.day)
+        } label: {
+            HStack {
+                Text(dayGroup.day.formatted(date: .abbreviated, time: .omitted))
+                    .font(.subheadline.weight(.semibold))
+                Spacer(minLength: 8)
+                DailyScoreBadge(score: score.totalScore)
+                    .accessibilityIdentifier("dqs-day-score-badge-\(dayIdentifier)")
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("dqs-day-score-link-\(dayIdentifier)")
     }
 
     private var emptyMealsView: some View {
@@ -545,11 +598,20 @@ struct HistoryView: View {
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return !key.isEmpty
     }
+
+    private func dayIdentifier(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar.current
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = Calendar.current.timeZone
+        formatter.dateFormat = "yyyyMMdd"
+        return formatter.string(from: date)
+    }
 }
 
 #Preview {
     NavigationStack {
         HistoryView(syncStatus: .cloudEnabled, layoutMode: .compact)
-            .modelContainer(for: [Meal.self, MealEntry.self, MealType.self, EntryPhotoAsset.self], inMemory: true)
+            .modelContainer(for: [Meal.self, MealEntry.self, MealType.self, EntryPhotoAsset.self, FoodItem.self], inMemory: true)
     }
 }

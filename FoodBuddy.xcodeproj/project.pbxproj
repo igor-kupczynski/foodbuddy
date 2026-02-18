@@ -9,11 +9,13 @@
 /* Begin PBXBuildFile section */
 		00AE3A523F8E9EFA0727E8A0 /* CloudPhotoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C22509208C0970B9C0A7645 /* CloudPhotoStore.swift */; };
 		020D1296DAA2F3B0875E8F6C /* CaptureMealTypeSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFBD74C417F2475CC2FB4A0 /* CaptureMealTypeSheet.swift */; };
+		0455FF5F5149A02923B2042E /* DQSCategory.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD056372DAB5E3DD95F4D6E /* DQSCategory.swift */; };
 		079EEAD687C95A04B93F14A7 /* AppRuntimeFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DEF776573A9186E35C7D77F /* AppRuntimeFlags.swift */; };
 		07E9457B01DA30E725C21BAF /* MealType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55FA85C02077513D332A96D2 /* MealType.swift */; };
 		090A3B6772099077C9FAE66E /* MealTypeManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 568838D20BA0FC7B3F7A18F4 /* MealTypeManagementView.swift */; };
 		0C0635621ADA6020EDB4A259 /* CaptureSessionLimits.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCC54739A91612286D43CDE7 /* CaptureSessionLimits.swift */; };
 		0EB4F5CD1EE8534055868428 /* PlatformImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B027CC85DC7D0F912FBDEAF /* PlatformImage.swift */; };
+		0F6D3F31087C05386D3F3095 /* DQSFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 829DAF53A110ED8CB101D0F9 /* DQSFlowUITests.swift */; };
 		12E245B3FBBE3495DD660CFC /* HistorySelectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9C3C20D3180E5F754E01820 /* HistorySelectionState.swift */; };
 		189F0663F13CC69E0C067D31 /* PhotoAssetSyncState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9917F34ACD123DC0DCEEEF21 /* PhotoAssetSyncState.swift */; };
 		19B7B9CF88FE15199ED23043 /* PhotoSyncDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E30925F4E2E2A7F7D0B13AB6 /* PhotoSyncDiagnosticsView.swift */; };
@@ -25,6 +27,7 @@
 		24811547D5528931B8034B2D /* EntryPhotoAsset.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D1D987E6F593072F19F3DB /* EntryPhotoAsset.swift */; };
 		25D78E16A8E3863660CB1902 /* PersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02D037E70BE4AA1BD223F9F5 /* PersistenceController.swift */; };
 		261CCB3BC006EE6C694E9AA5 /* FoodRecognitionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A6230877AE6DA3CED6DA2E2 /* FoodRecognitionService.swift */; };
+		27030910E1307E1FD1C46538 /* DQSScoringEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4FEEA211D0BAD308994A66 /* DQSScoringEngine.swift */; };
 		273C29BD807FD5FF7043196D /* MealEntryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A751A33C3ED3FC084668149 /* MealEntryService.swift */; };
 		28A33543BCEE12E1A861589C /* HistorySelectionStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034BE7C6AA686FA40DB18B58 /* HistorySelectionStateTests.swift */; };
 		2ECAA47C3FDFB54D63466B92 /* PersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02D037E70BE4AA1BD223F9F5 /* PersistenceController.swift */; };
@@ -34,6 +37,7 @@
 		33DA0900F305406868DC3534 /* AISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025DFCF54022CFCA15110FB4 /* AISettingsView.swift */; };
 		348C1A4CA74A3404B2738736 /* PhotoAssetSyncState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9917F34ACD123DC0DCEEEF21 /* PhotoAssetSyncState.swift */; };
 		36391E1E27029E87A818C443 /* CaptureMealTypeSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAFBD74C417F2475CC2FB4A0 /* CaptureMealTypeSheet.swift */; };
+		3670376FACDB66A64CD07457 /* FoodItemService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF7B6C7566FDC7F3C6226615 /* FoodItemService.swift */; };
 		3707AC883C9765BD4ABBCF87 /* MealTypeManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 568838D20BA0FC7B3F7A18F4 /* MealTypeManagementView.swift */; };
 		37BD3DFC2EA066CF3B6706D8 /* EntryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFE849E4935E718002026407 /* EntryDetailView.swift */; };
 		387AE7B4DE980DEE74B3935E /* MealEntryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECD0F55D985A8070DFD31F2E /* MealEntryServiceTests.swift */; };
@@ -44,7 +48,9 @@
 		4464DAB8EE49527D8E848225 /* ImagePreprocessorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D9A61EE53D76DC674AABCC7 /* ImagePreprocessorTests.swift */; };
 		460350572EA5B4959728D19A /* HistorySelectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9C3C20D3180E5F754E01820 /* HistorySelectionState.swift */; };
 		483EE2176096B3E04EAB7997 /* MealAIAnalysisStatusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 621CCD8C1D76A98937D653C0 /* MealAIAnalysisStatusTests.swift */; };
+		49BDD2681D1EEEA0D8473681 /* ManualFoodItemSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20DC3040B646D7B40F2BF749 /* ManualFoodItemSheet.swift */; };
 		49D537234CB68EE57FAD290D /* MealEntryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A751A33C3ED3FC084668149 /* MealEntryService.swift */; };
+		4AC18A9C4CC8D07567D4624A /* DQSScoringEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4FEEA211D0BAD308994A66 /* DQSScoringEngine.swift */; };
 		4D495ECCF642F0E88E62BA6E /* MealEntryRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B47578BCBF9C2EC0314332A5 /* MealEntryRepository.swift */; };
 		4E751A43B3EA4DCEEDAB0DA0 /* ImageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE54001850B673CBEB4EFD96 /* ImageStore.swift */; };
 		4EBE4D686A668D2B2964010F /* EntryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFE849E4935E718002026407 /* EntryDetailView.swift */; };
@@ -59,19 +65,25 @@
 		6212BCE326973F2F158D910D /* FoodAnalysisModelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03FEF855E62603E63B36FB9C /* FoodAnalysisModelStore.swift */; };
 		62B011349FA08FEC64C7C7EE /* PlatformImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B027CC85DC7D0F912FBDEAF /* PlatformImage.swift */; };
 		63FAA07A36078F2E7BF34ACD /* MockCameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 631278E2C5E7F6C4446E9EAA /* MockCameraCaptureView.swift */; };
+		642E5DABE8F767DEFED24515 /* DQSFixtureSeeder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41F647BCB446385A4DE4C676 /* DQSFixtureSeeder.swift */; };
 		66A3912F3A817C083E5E39C8 /* CaptureSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91FFA224E83B4251C667E967 /* CaptureSessionView.swift */; };
+		6786C9B187FB8C23CF9D254D /* DQSScoringEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12E6853DF0DF7252A6E9FA0E /* DQSScoringEngineTests.swift */; };
 		6C57ACA1EE22AE6F90F2D070 /* SyncStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E3F95174077E88B2B991C89 /* SyncStatus.swift */; };
 		707C976837961F9C3867D12B /* Meal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2842C8A80534142F06FB6C8D /* Meal.swift */; };
 		70826D1573135B21EBFF4FD5 /* AIAnalysisStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = F89E223DD8A071FC581A7DCA /* AIAnalysisStatus.swift */; };
 		72F4C23C71741839E24709CC /* FoodBuddyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35659DD404E95165A17241C1 /* FoodBuddyApp.swift */; };
 		730C484AEAFA1EC0BE590819 /* MockCameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 631278E2C5E7F6C4446E9EAA /* MockCameraCaptureView.swift */; };
+		732FBF3467C787C8EC869527 /* FoodItemEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6118740EDAEC903D34630E1B /* FoodItemEditView.swift */; };
 		73F4485015D2F6ECDA0916DB /* MealTypeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 863B38C5816FC2FC57CEAF42 /* MealTypeService.swift */; };
 		785A4B807C013A2B829664B4 /* CaptureIngestCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700F45B75CE0F54673B1F703 /* CaptureIngestCoordinator.swift */; };
 		786D82F769A85223D0C53EFF /* UpdatedAtVersioned.swift in Sources */ = {isa = PBXBuildFile; fileRef = C755DF9CF511D4715D44CA1E /* UpdatedAtVersioned.swift */; };
+		796724E4FAEB1CCA4E511720 /* FoodItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12583F7EDE6A7B472EE83508 /* FoodItem.swift */; };
 		7ABB45FF9D8F9AAD8A4A721D /* Dependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE9A27E147657D9ACC677493 /* Dependencies.swift */; };
 		7D0147BD419DF0BA97564361 /* Meal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2842C8A80534142F06FB6C8D /* Meal.swift */; };
+		7D6C1AECDA7420974638AEEB /* FoodAnalysisModelStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E8FF9F4D07C8993286987F2 /* FoodAnalysisModelStoreTests.swift */; };
 		7FB9EEAB4A3B07F7D8E63A51 /* MealType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55FA85C02077513D332A96D2 /* MealType.swift */; };
 		8670907D644F76CB6A3B9637 /* FoodAnalysisModelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03FEF855E62603E63B36FB9C /* FoodAnalysisModelStore.swift */; };
+		88F35E8A85DA479F14E17F8D /* FoodItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12583F7EDE6A7B472EE83508 /* FoodItem.swift */; };
 		8ABF7B87B491600FC75F767C /* FoodAnalysisCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9940CD12C87179DF1F01616A /* FoodAnalysisCoordinator.swift */; };
 		8B2536C56A445EB1FF49E149 /* MistralFoodRecognitionServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F856D07FC924006B7C70F0 /* MistralFoodRecognitionServiceTests.swift */; };
 		8B31F56AE9B389DE56D61D62 /* CaptureSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91FFA224E83B4251C667E967 /* CaptureSessionView.swift */; };
@@ -82,6 +94,7 @@
 		9216E5926954B8AC3C155F04 /* ImagePreprocessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5A90A52FFE0C22F3F5EAE8 /* ImagePreprocessor.swift */; };
 		928DC5B4BBAC4462C5E01576 /* EntryRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8F6CBE270912263E71D6162 /* EntryRowView.swift */; };
 		938D4947D73DCC89A6F8C561 /* CameraPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 271E17C477E438FE063E3813 /* CameraPicker.swift */; };
+		9436E8B8627C74F725103AD4 /* DQSFixtureSeeder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41F647BCB446385A4DE4C676 /* DQSFixtureSeeder.swift */; };
 		9B7ABA436B24B48002FAF1EA /* PhotoAssetSyncState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9917F34ACD123DC0DCEEEF21 /* PhotoAssetSyncState.swift */; };
 		9BEC8142F41BEF155FDD5137 /* Meal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2842C8A80534142F06FB6C8D /* Meal.swift */; };
 		9C162B6B8452683141D2D140 /* AIAnalysisStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = F89E223DD8A071FC581A7DCA /* AIAnalysisStatus.swift */; };
@@ -100,7 +113,10 @@
 		B889DC6D3C8585A447626084 /* MealTypeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 863B38C5816FC2FC57CEAF42 /* MealTypeService.swift */; };
 		B8A48CDCF07195785C47C08B /* PhotoSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97C65E4B387355E6C6CCA3DF /* PhotoSyncService.swift */; };
 		B9C7F3740F4E47AF49EBC2A5 /* MistralAPIKeyStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCD2CB35AD31E9EDD0BC4627 /* MistralAPIKeyStoreTests.swift */; };
+		BABE18DF14B4F3F476760E56 /* DQSCategory.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD056372DAB5E3DD95F4D6E /* DQSCategory.swift */; };
+		BDAB1FD653BF8B347776440B /* DailyDQSView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5F1122E60EA1D29726DA553 /* DailyDQSView.swift */; };
 		BE228F28C4DD42460411B453 /* CaptureIngestCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700F45B75CE0F54673B1F703 /* CaptureIngestCoordinator.swift */; };
+		BF2F583A9392847CFD7C44AE /* DailyScoreBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF10C8C6C4004538AD935EE5 /* DailyScoreBadge.swift */; };
 		C1949472C023B5E4B1EC5748 /* MealType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55FA85C02077513D332A96D2 /* MealType.swift */; };
 		C28B1EF5AB5F4AAA87A36481 /* MistralFoodRecognitionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4C7C4216B731AA98E8CA0BA /* MistralFoodRecognitionService.swift */; };
 		C58368545795F73AC49C6AAF /* MealEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35495D8E8FE2937FAE5B1170 /* MealEntry.swift */; };
@@ -110,24 +126,34 @@
 		C7F266060CA3645ABD338669 /* MealRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDBFE7BB0A8841F3360D3FBC /* MealRowView.swift */; };
 		C82F35CFD9805955625AD466 /* PhotoSyncServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D352C4980CAC89DBD9E80A2F /* PhotoSyncServiceTests.swift */; };
 		C991572A3E004D1923175F40 /* MealEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35495D8E8FE2937FAE5B1170 /* MealEntry.swift */; };
+		C9ADD377011D8D1FD8DD2865 /* FoodItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12583F7EDE6A7B472EE83508 /* FoodItem.swift */; };
 		CB89A4F66A5EEE1B68348F49 /* CameraPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 271E17C477E438FE063E3813 /* CameraPicker.swift */; };
 		D091A916E3030B8C31000F9E /* MetadataConflictResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6520E1369AC99ED710FB0A1A /* MetadataConflictResolver.swift */; };
 		D1CB6EE0AB5D62ECE1D0FE5B /* MetadataConflictResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6520E1369AC99ED710FB0A1A /* MetadataConflictResolver.swift */; };
 		D2B1BD14AD379DA7AEB00642 /* MealDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1FE2C5DB051EEE7DA94FBE5 /* MealDetailView.swift */; };
+		D5348D061F43A6951AA08BFD /* DQSCategory.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD056372DAB5E3DD95F4D6E /* DQSCategory.swift */; };
 		D7CFC50FF72CB4A0C850446D /* MealEntryRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B47578BCBF9C2EC0314332A5 /* MealEntryRepository.swift */; };
+		D89DAFBD62B6A178D3DDFC2E /* FoodItemEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6118740EDAEC903D34630E1B /* FoodItemEditView.swift */; };
 		D8ED165F711FABD52646D3B0 /* FoodAnalysisCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9226818DB89544438C5AEBB0 /* FoodAnalysisCoordinatorTests.swift */; };
 		D9D8BC19B966B8BD38F038CC /* HistorySelectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9C3C20D3180E5F754E01820 /* HistorySelectionState.swift */; };
 		DB8C286A91ACC22830A4393E /* MistralAPIKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BF5F63D40E3AD6A30A33977 /* MistralAPIKeyStore.swift */; };
+		DC8054481F17598F20339AF6 /* DailyScoreBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF10C8C6C4004538AD935EE5 /* DailyScoreBadge.swift */; };
 		DD518102F3725CD20DAFC798 /* FoodAnalysisModelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03FEF855E62603E63B36FB9C /* FoodAnalysisModelStore.swift */; };
 		DD93D4D2970FD0E6D7472CF1 /* MealDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1FE2C5DB051EEE7DA94FBE5 /* MealDetailView.swift */; };
 		E0BABD549EFCF0459BF0818D /* MistralAPIKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BF5F63D40E3AD6A30A33977 /* MistralAPIKeyStore.swift */; };
+		E1D6FB3DC852E9DC7D9CB8CF /* FoodItemService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF7B6C7566FDC7F3C6226615 /* FoodItemService.swift */; };
+		E4BAE3EC65E778ABBDD90026 /* MealServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2690F67053468BC545155DE6 /* MealServiceTests.swift */; };
+		EBA0EDA2348C006551C20D08 /* DailyDQSView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5F1122E60EA1D29726DA553 /* DailyDQSView.swift */; };
 		EE2A6934E26EAF73D92F7A7B /* FoodRecognitionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A6230877AE6DA3CED6DA2E2 /* FoodRecognitionService.swift */; };
+		EEFCD9D80EF73F4520879A23 /* FoodItemService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF7B6C7566FDC7F3C6226615 /* FoodItemService.swift */; };
 		EF789FEB4881626283775598 /* UpdatedAtVersioned.swift in Sources */ = {isa = PBXBuildFile; fileRef = C755DF9CF511D4715D44CA1E /* UpdatedAtVersioned.swift */; };
 		F0DF06CF2621574C159E96F3 /* MetadataConflictResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6520E1369AC99ED710FB0A1A /* MetadataConflictResolver.swift */; };
 		F12D51F21A043B7D3DA87818 /* MistralAPIKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BF5F63D40E3AD6A30A33977 /* MistralAPIKeyStore.swift */; };
 		F16AEAEB5140D26C8053603E /* CaptureSourceSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5779B7B4F7105F0560354236 /* CaptureSourceSheet.swift */; };
 		F2921A92DC4B1552F7615266 /* MealEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35495D8E8FE2937FAE5B1170 /* MealEntry.swift */; };
 		F3110C9C01CE8983040ED5DF /* MealTypeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 863B38C5816FC2FC57CEAF42 /* MealTypeService.swift */; };
+		F7DA89550F6439FBE2C60EC1 /* DQSScoringEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4FEEA211D0BAD308994A66 /* DQSScoringEngine.swift */; };
+		F7F67742035F49D8CD49A8B7 /* ManualFoodItemSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20DC3040B646D7B40F2BF749 /* ManualFoodItemSheet.swift */; };
 		FAF5F9CD4BDBF63335780F7B /* ImageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE54001850B673CBEB4EFD96 /* ImageStore.swift */; };
 		FC64E4A3CAB4F35E4B3D53BF /* PhotoSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97C65E4B387355E6C6CCA3DF /* PhotoSyncService.swift */; };
 		FE5704F4CF8678CFE9BD6E73 /* FoodRecognitionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A6230877AE6DA3CED6DA2E2 /* FoodRecognitionService.swift */; };
@@ -148,8 +174,13 @@
 		02D037E70BE4AA1BD223F9F5 /* PersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceController.swift; sourceTree = "<group>"; };
 		034BE7C6AA686FA40DB18B58 /* HistorySelectionStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistorySelectionStateTests.swift; sourceTree = "<group>"; };
 		03FEF855E62603E63B36FB9C /* FoodAnalysisModelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodAnalysisModelStore.swift; sourceTree = "<group>"; };
+		0C4FEEA211D0BAD308994A66 /* DQSScoringEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DQSScoringEngine.swift; sourceTree = "<group>"; };
 		0DEF776573A9186E35C7D77F /* AppRuntimeFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRuntimeFlags.swift; sourceTree = "<group>"; };
+		12583F7EDE6A7B472EE83508 /* FoodItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodItem.swift; sourceTree = "<group>"; };
+		12E6853DF0DF7252A6E9FA0E /* DQSScoringEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DQSScoringEngineTests.swift; sourceTree = "<group>"; };
 		13CF457AE1EDD1E82869800D /* MealService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealService.swift; sourceTree = "<group>"; };
+		20DC3040B646D7B40F2BF749 /* ManualFoodItemSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualFoodItemSheet.swift; sourceTree = "<group>"; };
+		2690F67053468BC545155DE6 /* MealServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealServiceTests.swift; sourceTree = "<group>"; };
 		271E17C477E438FE063E3813 /* CameraPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPicker.swift; sourceTree = "<group>"; };
 		2842C8A80534142F06FB6C8D /* Meal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Meal.swift; sourceTree = "<group>"; };
 		2AA17860A9959DC500C815F4 /* FoodBuddyUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = FoodBuddyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -157,6 +188,7 @@
 		35495D8E8FE2937FAE5B1170 /* MealEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEntry.swift; sourceTree = "<group>"; };
 		35659DD404E95165A17241C1 /* FoodBuddyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodBuddyApp.swift; sourceTree = "<group>"; };
 		3E3F95174077E88B2B991C89 /* SyncStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatus.swift; sourceTree = "<group>"; };
+		41F647BCB446385A4DE4C676 /* DQSFixtureSeeder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DQSFixtureSeeder.swift; sourceTree = "<group>"; };
 		492157BA0819BD3212F38857 /* FoodBuddy.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FoodBuddy.entitlements; sourceTree = "<group>"; };
 		553BB5132952AD1A5459D219 /* MetadataConflictResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataConflictResolverTests.swift; sourceTree = "<group>"; };
 		55FA85C02077513D332A96D2 /* MealType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealType.swift; sourceTree = "<group>"; };
@@ -165,6 +197,7 @@
 		5A751A33C3ED3FC084668149 /* MealEntryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEntryService.swift; sourceTree = "<group>"; };
 		5B027CC85DC7D0F912FBDEAF /* PlatformImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformImage.swift; sourceTree = "<group>"; };
 		5B76D93D1EAF6D9CD701CDEA /* FoodBuddyDev.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = FoodBuddyDev.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6118740EDAEC903D34630E1B /* FoodItemEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodItemEditView.swift; sourceTree = "<group>"; };
 		621CCD8C1D76A98937D653C0 /* MealAIAnalysisStatusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealAIAnalysisStatusTests.swift; sourceTree = "<group>"; };
 		631278E2C5E7F6C4446E9EAA /* MockCameraCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockCameraCaptureView.swift; sourceTree = "<group>"; };
 		6520E1369AC99ED710FB0A1A /* MetadataConflictResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataConflictResolver.swift; sourceTree = "<group>"; };
@@ -173,9 +206,11 @@
 		700F45B75CE0F54673B1F703 /* CaptureIngestCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureIngestCoordinator.swift; sourceTree = "<group>"; };
 		77361F74507B565632C6EE45 /* FoodBuddy.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = FoodBuddy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7D5A90A52FFE0C22F3F5EAE8 /* ImagePreprocessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePreprocessor.swift; sourceTree = "<group>"; };
+		829DAF53A110ED8CB101D0F9 /* DQSFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DQSFlowUITests.swift; sourceTree = "<group>"; };
 		863B38C5816FC2FC57CEAF42 /* MealTypeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealTypeService.swift; sourceTree = "<group>"; };
 		8A6230877AE6DA3CED6DA2E2 /* FoodRecognitionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodRecognitionService.swift; sourceTree = "<group>"; };
 		8A963FE6E238D055A0C2EC8E /* FoodBuddyCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FoodBuddyCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8E8FF9F4D07C8993286987F2 /* FoodAnalysisModelStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodAnalysisModelStoreTests.swift; sourceTree = "<group>"; };
 		8F7916D41A3AE904DCA9FA9B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		91FFA224E83B4251C667E967 /* CaptureSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSessionView.swift; sourceTree = "<group>"; };
 		9226818DB89544438C5AEBB0 /* FoodAnalysisCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodAnalysisCoordinatorTests.swift; sourceTree = "<group>"; };
@@ -187,7 +222,9 @@
 		AE54001850B673CBEB4EFD96 /* ImageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageStore.swift; sourceTree = "<group>"; };
 		B1FE2C5DB051EEE7DA94FBE5 /* MealDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealDetailView.swift; sourceTree = "<group>"; };
 		B47578BCBF9C2EC0314332A5 /* MealEntryRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEntryRepository.swift; sourceTree = "<group>"; };
+		B5F1122E60EA1D29726DA553 /* DailyDQSView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyDQSView.swift; sourceTree = "<group>"; };
 		B7F216B6A1AB7100E1B5EB30 /* CapturePresentationUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapturePresentationUITests.swift; sourceTree = "<group>"; };
+		BBD056372DAB5E3DD95F4D6E /* DQSCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DQSCategory.swift; sourceTree = "<group>"; };
 		BCC54739A91612286D43CDE7 /* CaptureSessionLimits.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSessionLimits.swift; sourceTree = "<group>"; };
 		C755DF9CF511D4715D44CA1E /* UpdatedAtVersioned.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdatedAtVersioned.swift; sourceTree = "<group>"; };
 		C99E9DE840DC51DE8D4691FD /* TestImageFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestImageFactory.swift; sourceTree = "<group>"; };
@@ -196,6 +233,7 @@
 		CCD2CB35AD31E9EDD0BC4627 /* MistralAPIKeyStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MistralAPIKeyStoreTests.swift; sourceTree = "<group>"; };
 		D352C4980CAC89DBD9E80A2F /* PhotoSyncServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoSyncServiceTests.swift; sourceTree = "<group>"; };
 		DE9A27E147657D9ACC677493 /* Dependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dependencies.swift; sourceTree = "<group>"; };
+		DF7B6C7566FDC7F3C6226615 /* FoodItemService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodItemService.swift; sourceTree = "<group>"; };
 		E30925F4E2E2A7F7D0B13AB6 /* PhotoSyncDiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoSyncDiagnosticsView.swift; sourceTree = "<group>"; };
 		E6D1D987E6F593072F19F3DB /* EntryPhotoAsset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryPhotoAsset.swift; sourceTree = "<group>"; };
 		E7F856D07FC924006B7C70F0 /* MistralFoodRecognitionServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MistralFoodRecognitionServiceTests.swift; sourceTree = "<group>"; };
@@ -206,6 +244,7 @@
 		F89E223DD8A071FC581A7DCA /* AIAnalysisStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAnalysisStatus.swift; sourceTree = "<group>"; };
 		F8F6CBE270912263E71D6162 /* EntryRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryRowView.swift; sourceTree = "<group>"; };
 		FBBBC1DDB603881A57E91E90 /* LibraryPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryPicker.swift; sourceTree = "<group>"; };
+		FF10C8C6C4004538AD935EE5 /* DailyScoreBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyScoreBadge.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -222,10 +261,22 @@
 			path = FoodBuddy;
 			sourceTree = "<group>";
 		};
+		28D21C80A8D0AB740CFF75ED /* DQS */ = {
+			isa = PBXGroup;
+			children = (
+				B5F1122E60EA1D29726DA553 /* DailyDQSView.swift */,
+				FF10C8C6C4004538AD935EE5 /* DailyScoreBadge.swift */,
+				6118740EDAEC903D34630E1B /* FoodItemEditView.swift */,
+				20DC3040B646D7B40F2BF749 /* ManualFoodItemSheet.swift */,
+			);
+			path = DQS;
+			sourceTree = "<group>";
+		};
 		2C5533285975FC48735E94C3 /* Features */ = {
 			isa = PBXGroup;
 			children = (
 				4D7265BC81D15DFAB6D41ADA /* Capture */,
+				28D21C80A8D0AB740CFF75ED /* DQS */,
 				8FF3D64265B5676D9AC306E5 /* EntryDetail */,
 				4D6617F13C6475F6D3D4ECD9 /* History */,
 				4F28423F72EC7E6ACEC64919 /* MealTypes */,
@@ -248,6 +299,7 @@
 				0DEF776573A9186E35C7D77F /* AppRuntimeFlags.swift */,
 				BCC54739A91612286D43CDE7 /* CaptureSessionLimits.swift */,
 				DE9A27E147657D9ACC677493 /* Dependencies.swift */,
+				41F647BCB446385A4DE4C676 /* DQSFixtureSeeder.swift */,
 				02D037E70BE4AA1BD223F9F5 /* PersistenceController.swift */,
 				5B027CC85DC7D0F912FBDEAF /* PlatformImage.swift */,
 				3E3F95174077E88B2B991C89 /* SyncStatus.swift */,
@@ -305,6 +357,7 @@
 			isa = PBXGroup;
 			children = (
 				B7F216B6A1AB7100E1B5EB30 /* CapturePresentationUITests.swift */,
+				829DAF53A110ED8CB101D0F9 /* DQSFlowUITests.swift */,
 			);
 			path = FoodBuddyUITests;
 			sourceTree = "<group>";
@@ -313,7 +366,9 @@
 			isa = PBXGroup;
 			children = (
 				F89E223DD8A071FC581A7DCA /* AIAnalysisStatus.swift */,
+				BBD056372DAB5E3DD95F4D6E /* DQSCategory.swift */,
 				E6D1D987E6F593072F19F3DB /* EntryPhotoAsset.swift */,
+				12583F7EDE6A7B472EE83508 /* FoodItem.swift */,
 				C9C3C20D3180E5F754E01820 /* HistorySelectionState.swift */,
 				2842C8A80534142F06FB6C8D /* Meal.swift */,
 				35495D8E8FE2937FAE5B1170 /* MealEntry.swift */,
@@ -355,12 +410,15 @@
 		B91FEAA47402227EFE531139 /* FoodBuddyCoreTests */ = {
 			isa = PBXGroup;
 			children = (
+				12E6853DF0DF7252A6E9FA0E /* DQSScoringEngineTests.swift */,
 				9226818DB89544438C5AEBB0 /* FoodAnalysisCoordinatorTests.swift */,
+				8E8FF9F4D07C8993286987F2 /* FoodAnalysisModelStoreTests.swift */,
 				034BE7C6AA686FA40DB18B58 /* HistorySelectionStateTests.swift */,
 				9D9A61EE53D76DC674AABCC7 /* ImagePreprocessorTests.swift */,
 				F6CD7161495B1784EB0B1818 /* ImageStoreTests.swift */,
 				621CCD8C1D76A98937D653C0 /* MealAIAnalysisStatusTests.swift */,
 				ECD0F55D985A8070DFD31F2E /* MealEntryServiceTests.swift */,
+				2690F67053468BC545155DE6 /* MealServiceTests.swift */,
 				553BB5132952AD1A5459D219 /* MetadataConflictResolverTests.swift */,
 				CCD2CB35AD31E9EDD0BC4627 /* MistralAPIKeyStoreTests.swift */,
 				E7F856D07FC924006B7C70F0 /* MistralFoodRecognitionServiceTests.swift */,
@@ -374,8 +432,10 @@
 			isa = PBXGroup;
 			children = (
 				6C22509208C0970B9C0A7645 /* CloudPhotoStore.swift */,
+				0C4FEEA211D0BAD308994A66 /* DQSScoringEngine.swift */,
 				9940CD12C87179DF1F01616A /* FoodAnalysisCoordinator.swift */,
 				03FEF855E62603E63B36FB9C /* FoodAnalysisModelStore.swift */,
+				DF7B6C7566FDC7F3C6226615 /* FoodItemService.swift */,
 				8A6230877AE6DA3CED6DA2E2 /* FoodRecognitionService.swift */,
 				7D5A90A52FFE0C22F3F5EAE8 /* ImagePreprocessor.swift */,
 				5A751A33C3ED3FC084668149 /* MealEntryService.swift */,
@@ -515,6 +575,11 @@
 				8B31F56AE9B389DE56D61D62 /* CaptureSessionView.swift in Sources */,
 				F16AEAEB5140D26C8053603E /* CaptureSourceSheet.swift in Sources */,
 				AAA491936ABBA5F3D6F8406B /* CloudPhotoStore.swift in Sources */,
+				D5348D061F43A6951AA08BFD /* DQSCategory.swift in Sources */,
+				642E5DABE8F767DEFED24515 /* DQSFixtureSeeder.swift in Sources */,
+				27030910E1307E1FD1C46538 /* DQSScoringEngine.swift in Sources */,
+				EBA0EDA2348C006551C20D08 /* DailyDQSView.swift in Sources */,
+				BF2F583A9392847CFD7C44AE /* DailyScoreBadge.swift in Sources */,
 				3FF9691FCF28F333BBAB91BB /* Dependencies.swift in Sources */,
 				4EBE4D686A668D2B2964010F /* EntryDetailView.swift in Sources */,
 				2183544B110D00C1C599B035 /* EntryPhotoAsset.swift in Sources */,
@@ -522,12 +587,16 @@
 				8FF249F5061074FCB3A6FF6C /* FoodAnalysisCoordinator.swift in Sources */,
 				DD518102F3725CD20DAFC798 /* FoodAnalysisModelStore.swift in Sources */,
 				616B86E05818D096CCDA2E69 /* FoodBuddyApp.swift in Sources */,
+				C9ADD377011D8D1FD8DD2865 /* FoodItem.swift in Sources */,
+				732FBF3467C787C8EC869527 /* FoodItemEditView.swift in Sources */,
+				EEFCD9D80EF73F4520879A23 /* FoodItemService.swift in Sources */,
 				FE5704F4CF8678CFE9BD6E73 /* FoodRecognitionService.swift in Sources */,
 				460350572EA5B4959728D19A /* HistorySelectionState.swift in Sources */,
 				B3E457A30A4FA6CAF0232B6D /* HistoryView.swift in Sources */,
 				2EED9012628FA47312B99AF7 /* ImagePreprocessor.swift in Sources */,
 				FAF5F9CD4BDBF63335780F7B /* ImageStore.swift in Sources */,
 				AA20E80DAD851BE92E1D55C6 /* LibraryPicker.swift in Sources */,
+				F7F67742035F49D8CD49A8B7 /* ManualFoodItemSheet.swift in Sources */,
 				9BEC8142F41BEF155FDD5137 /* Meal.swift in Sources */,
 				DD93D4D2970FD0E6D7472CF1 /* MealDetailView.swift in Sources */,
 				C58368545795F73AC49C6AAF /* MealEntry.swift in Sources */,
@@ -566,6 +635,11 @@
 				66A3912F3A817C083E5E39C8 /* CaptureSessionView.swift in Sources */,
 				C7AC8C1B4E2941968ED1A202 /* CaptureSourceSheet.swift in Sources */,
 				1C3159C3A9FBD85D0564A935 /* CloudPhotoStore.swift in Sources */,
+				BABE18DF14B4F3F476760E56 /* DQSCategory.swift in Sources */,
+				9436E8B8627C74F725103AD4 /* DQSFixtureSeeder.swift in Sources */,
+				4AC18A9C4CC8D07567D4624A /* DQSScoringEngine.swift in Sources */,
+				BDAB1FD653BF8B347776440B /* DailyDQSView.swift in Sources */,
+				DC8054481F17598F20339AF6 /* DailyScoreBadge.swift in Sources */,
 				7ABB45FF9D8F9AAD8A4A721D /* Dependencies.swift in Sources */,
 				37BD3DFC2EA066CF3B6706D8 /* EntryDetailView.swift in Sources */,
 				24811547D5528931B8034B2D /* EntryPhotoAsset.swift in Sources */,
@@ -573,12 +647,16 @@
 				8ABF7B87B491600FC75F767C /* FoodAnalysisCoordinator.swift in Sources */,
 				8670907D644F76CB6A3B9637 /* FoodAnalysisModelStore.swift in Sources */,
 				72F4C23C71741839E24709CC /* FoodBuddyApp.swift in Sources */,
+				88F35E8A85DA479F14E17F8D /* FoodItem.swift in Sources */,
+				D89DAFBD62B6A178D3DDFC2E /* FoodItemEditView.swift in Sources */,
+				E1D6FB3DC852E9DC7D9CB8CF /* FoodItemService.swift in Sources */,
 				261CCB3BC006EE6C694E9AA5 /* FoodRecognitionService.swift in Sources */,
 				12E245B3FBBE3495DD660CFC /* HistorySelectionState.swift in Sources */,
 				A959E6A5DEEC4EA426BEAC79 /* HistoryView.swift in Sources */,
 				31AB669E8A4429430B1951C8 /* ImagePreprocessor.swift in Sources */,
 				1CD9029A47E66BDAE4C406DC /* ImageStore.swift in Sources */,
 				50E0CE3EFFB964AD41F88B0B /* LibraryPicker.swift in Sources */,
+				49BDD2681D1EEEA0D8473681 /* ManualFoodItemSheet.swift in Sources */,
 				7D0147BD419DF0BA97564361 /* Meal.swift in Sources */,
 				D2B1BD14AD379DA7AEB00642 /* MealDetailView.swift in Sources */,
 				F2921A92DC4B1552F7615266 /* MealEntry.swift in Sources */,
@@ -610,10 +688,16 @@
 				A3BC61F6AA07A43C8B71615F /* AIAnalysisStatus.swift in Sources */,
 				BE228F28C4DD42460411B453 /* CaptureIngestCoordinator.swift in Sources */,
 				00AE3A523F8E9EFA0727E8A0 /* CloudPhotoStore.swift in Sources */,
+				0455FF5F5149A02923B2042E /* DQSCategory.swift in Sources */,
+				F7DA89550F6439FBE2C60EC1 /* DQSScoringEngine.swift in Sources */,
+				6786C9B187FB8C23CF9D254D /* DQSScoringEngineTests.swift in Sources */,
 				B32E994F55D84495037E27DF /* EntryPhotoAsset.swift in Sources */,
 				C5D603185FB58EEEFD4BABBC /* FoodAnalysisCoordinator.swift in Sources */,
 				D8ED165F711FABD52646D3B0 /* FoodAnalysisCoordinatorTests.swift in Sources */,
 				6212BCE326973F2F158D910D /* FoodAnalysisModelStore.swift in Sources */,
+				7D6C1AECDA7420974638AEEB /* FoodAnalysisModelStoreTests.swift in Sources */,
+				796724E4FAEB1CCA4E511720 /* FoodItem.swift in Sources */,
+				3670376FACDB66A64CD07457 /* FoodItemService.swift in Sources */,
 				EE2A6934E26EAF73D92F7A7B /* FoodRecognitionService.swift in Sources */,
 				D9D8BC19B966B8BD38F038CC /* HistorySelectionState.swift in Sources */,
 				28A33543BCEE12E1A861589C /* HistorySelectionStateTests.swift in Sources */,
@@ -628,6 +712,7 @@
 				49D537234CB68EE57FAD290D /* MealEntryService.swift in Sources */,
 				387AE7B4DE980DEE74B3935E /* MealEntryServiceTests.swift in Sources */,
 				5972CA286B4BA513ED6A95C1 /* MealService.swift in Sources */,
+				E4BAE3EC65E778ABBDD90026 /* MealServiceTests.swift in Sources */,
 				7FB9EEAB4A3B07F7D8E63A51 /* MealType.swift in Sources */,
 				73F4485015D2F6ECDA0916DB /* MealTypeService.swift in Sources */,
 				F0DF06CF2621574C159E96F3 /* MetadataConflictResolver.swift in Sources */,
@@ -650,6 +735,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9DCD95A140FB59ED2EC88A9F /* CapturePresentationUITests.swift in Sources */,
+				0F6D3F31087C05386D3F3095 /* DQSFlowUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

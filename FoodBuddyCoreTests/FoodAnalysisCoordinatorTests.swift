@@ -3,12 +3,23 @@ import XCTest
 
 @MainActor
 final class FoodAnalysisCoordinatorTests: XCTestCase {
-    func testCoordinatorHappyPathSetsCompletedAndDescription() async throws {
+    func testCoordinatorHappyPathSetsCompletedDescriptionAndFoodItems() async throws {
         let harness = try AnalysisHarness.make()
         defer { harness.cleanup() }
 
         let meal = try harness.makePendingMeal()
-        let recognitionSpy = FoodRecognitionSpy(behavior: .success("Pasta with tomato sauce"))
+        let recognitionSpy = FoodRecognitionSpy(
+            behavior: .success(
+                FoodAnalysisResult(
+                    description: "Pasta with tomato sauce",
+                    foodItems: [
+                        AIFoodItem(name: "Pasta", categories: ["whole_grains"], servings: 1),
+                        AIFoodItem(name: "Sauce", categories: ["vegetables"], servings: 1)
+                    ]
+                )
+            )
+        )
+
         let coordinator = FoodAnalysisCoordinator(
             modelStore: FoodAnalysisModelStore(modelContext: harness.modelContext),
             imageStore: harness.imageStore,
@@ -21,8 +32,74 @@ final class FoodAnalysisCoordinatorTests: XCTestCase {
         XCTAssertEqual(meal.aiAnalysisStatus, .completed)
         XCTAssertEqual(meal.aiDescription, "Pasta with tomato sauce")
         XCTAssertNil(meal.aiAnalysisErrorDetails)
+        XCTAssertEqual(meal.foodItems.count, 2)
+        XCTAssertEqual(Set(meal.foodItems.map(\.category)), [.wholeGrains, .vegetables])
+
         let callCount = await recognitionSpy.recordedCallCount()
         XCTAssertEqual(callCount, 1)
+    }
+
+    func testCoordinatorReanalysisReplacesAIItemsAndPreservesManualItems() async throws {
+        let harness = try AnalysisHarness.make()
+        defer { harness.cleanup() }
+
+        let meal = try harness.makePendingMeal()
+        harness.modelContext.insert(
+            FoodItem(
+                mealId: meal.id,
+                name: "Manual almonds",
+                categoryRawValue: DQSCategory.nutsAndSeeds.rawValue,
+                servings: 1,
+                isManual: true,
+                meal: meal
+            )
+        )
+        try harness.modelContext.save()
+
+        let firstRunSpy = FoodRecognitionSpy(
+            behavior: .success(
+                FoodAnalysisResult(
+                    description: "Meal 1",
+                    foodItems: [AIFoodItem(name: "Yogurt", categories: ["dairy"], servings: 1)]
+                )
+            )
+        )
+
+        let coordinator = FoodAnalysisCoordinator(
+            modelStore: FoodAnalysisModelStore(modelContext: harness.modelContext),
+            imageStore: harness.imageStore,
+            foodRecognitionService: firstRunSpy,
+            apiKeyStore: StaticCoordinatorAPIKeyStore(key: "configured")
+        )
+        await coordinator.processPendingMeals()
+
+        XCTAssertEqual(meal.foodItems.filter { !$0.isManual }.count, 1)
+        XCTAssertEqual(meal.foodItems.filter { $0.isManual }.count, 1)
+
+        meal.aiAnalysisStatus = .pending
+        try harness.modelContext.save()
+
+        let secondRunSpy = FoodRecognitionSpy(
+            behavior: .success(
+                FoodAnalysisResult(
+                    description: "Meal 2",
+                    foodItems: [AIFoodItem(name: "Donut", categories: ["fried_foods"], servings: 1)]
+                )
+            )
+        )
+
+        let secondCoordinator = FoodAnalysisCoordinator(
+            modelStore: FoodAnalysisModelStore(modelContext: harness.modelContext),
+            imageStore: harness.imageStore,
+            foodRecognitionService: secondRunSpy,
+            apiKeyStore: StaticCoordinatorAPIKeyStore(key: "configured")
+        )
+        await secondCoordinator.processPendingMeals()
+
+        XCTAssertEqual(meal.foodItems.filter { $0.isManual }.count, 1)
+        let aiItems = meal.foodItems.filter { !$0.isManual }
+        XCTAssertEqual(aiItems.count, 1)
+        XCTAssertEqual(aiItems.first?.category, .friedFoods)
     }
 
     func testCoordinatorFailurePathSetsFailedAndKeepsDescriptionNil() async throws {
@@ -53,7 +130,11 @@ final class FoodAnalysisCoordinatorTests: XCTestCase {
         defer { harness.cleanup() }
 
         let meal = try harness.makePendingMeal()
-        let recognitionSpy = FoodRecognitionSpy(behavior: .success("Unused"))
+        let recognitionSpy = FoodRecognitionSpy(
+            behavior: .success(
+                FoodAnalysisResult(description: "Unused", foodItems: [])
+            )
+        )
         let coordinator = FoodAnalysisCoordinator(
             modelStore: FoodAnalysisModelStore(modelContext: harness.modelContext),
             imageStore: harness.imageStore,
@@ -76,7 +157,9 @@ final class FoodAnalysisCoordinatorTests: XCTestCase {
         meal.aiAnalysisStatus = .analyzing
         try harness.modelContext.save()
 
-        let recognitionSpy = FoodRecognitionSpy(behavior: .success("Unused"))
+        let recognitionSpy = FoodRecognitionSpy(
+            behavior: .success(FoodAnalysisResult(description: "Unused", foodItems: []))
+        )
         let coordinator = FoodAnalysisCoordinator(
             modelStore: FoodAnalysisModelStore(modelContext: harness.modelContext),
             imageStore: harness.imageStore,
@@ -101,7 +184,7 @@ private final class AnalysisHarness {
 
     static func make() throws -> AnalysisHarness {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let schema = Schema([Meal.self, MealEntry.self, EntryPhotoAsset.self, MealType.self])
+        let schema = Schema([Meal.self, MealEntry.self, EntryPhotoAsset.self, MealType.self, FoodItem.self])
         let container = try ModelContainer(for: schema, configurations: configuration)
         let modelContext = ModelContext(container)
 
@@ -152,7 +235,7 @@ private struct StaticCoordinatorAPIKeyStore: MistralAPIKeyStoring {
 
 private actor FoodRecognitionSpy: FoodRecognitionService {
     enum Behavior {
-        case success(String)
+        case success(FoodAnalysisResult)
         case failure(FoodRecognitionServiceError)
     }
 
@@ -163,7 +246,7 @@ private actor FoodRecognitionSpy: FoodRecognitionService {
         self.behavior = behavior
     }
 
-    func describe(images: [Data], notes: String?) async throws -> String {
+    func analyze(images: [Data], notes: String?) async throws -> FoodAnalysisResult {
         callCount += 1
         switch behavior {
         case .success(let response):
@@ -171,6 +254,10 @@ private actor FoodRecognitionSpy: FoodRecognitionService {
         case .failure(let error):
             throw error
         }
+    }
+
+    func describe(images: [Data], notes: String?) async throws -> String {
+        try await analyze(images: images, notes: notes).description
     }
 
     func recordedCallCount() -> Int {
