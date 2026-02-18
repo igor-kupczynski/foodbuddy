@@ -315,6 +315,8 @@ Update `MockFoodRecognitionService` — add `analyze()` with a new `Behavior` ca
 - [ ] Modify `FoodBuddy/Services/MealService.swift` — change `deleteMealIfEmpty` guard to `entries.isEmpty && foodItems.isEmpty` (see Meal lifecycle change above)
 - [ ] Create `FoodBuddy/Services/DQSScoringEngine.swift`
 - [ ] Create `FoodBuddyCoreTests/DQSScoringEngineTests.swift` — test every category at boundary servings (0, 1, 3, 5, 6+), empty input, multi-category aggregation, fractional servings rounding
+- [ ] Create `FoodBuddyCoreTests/MealServiceTests.swift` — verify `deleteMealIfEmpty` keeps meal when `foodItems` exist and deletes only when both `entries` and `foodItems` are empty
+- [ ] Extend `FoodBuddyCoreTests/MealEntryServiceTests.swift` (or equivalent integration test) — verify moving/deleting entries does not cascade-delete meal if it still has `foodItems`
 
 ### Phase 2 (M2): Enhanced AI Categorization
 
@@ -330,6 +332,7 @@ The existing AI pipeline: `FoodAnalysisCoordinator` (`FoodBuddy/Services/FoodAna
 - [ ] Modify `FoodBuddy/Services/FoodAnalysisCoordinator.swift` — in `processPendingMeals()`, call `analyze()` instead of `describe()`, call `markCompletedWithFoodItems()` instead of `markCompleted()`
 - [ ] Extend `FoodBuddyCoreTests/MistralFoodRecognitionServiceTests.swift` — verify new schema in request JSON, parse response with `food_items`, handle empty food_items, skip items with unknown category strings
 - [ ] Extend `FoodBuddyCoreTests/FoodAnalysisCoordinatorTests.swift` — verify `FoodItem` records created after analysis, verify re-analysis replaces AI items but preserves manual items
+- [ ] Create/extend `FoodBuddyCoreTests/FoodAnalysisModelStoreTests.swift` — verify snake_case→`DQSCategory` mapping, double-count expansion (one input item -> multiple `FoodItem` rows), unknown category drop, and non-manual replacement semantics
 
 ### Phase 3 (M3): Daily DQS View + Food Item Editing UI
 
@@ -361,11 +364,15 @@ The existing AI pipeline: `FoodAnalysisCoordinator` (`FoodBuddy/Services/FoodAna
                        [+ Add Item]
   ```
   Each row tappable → `FoodItemEditView` sheet.
+- [ ] Add deterministic accessibility identifiers for DQS surfaces (day score badge/link, category rows, food item rows, add/edit/save/delete actions) so UI tests can drive and assert behavior without label-string coupling
+- [ ] Create `FoodBuddyUITests/DQSFlowUITests.swift` — with mock food recognition enabled, verify history day header shows score badge, navigation to `DailyDQSView`, and category/total rendering for known fixture data
 
 ### Phase 4 (M4): Manual Entry + Polish + Attribution
 
 - [ ] Create `FoodBuddy/Features/DQS/ManualFoodItemSheet.swift` — add food item without photos: name, category, servings. When navigated from MealDetailView, attach to that meal. When from DailyDQSView, show meal type picker and use/create meal for that day+type (follow `MealService.meal(for:loggedAt:)` pattern in `FoodBuddy/Services/MealService.swift`).
 - [ ] Add "+ Add Food Item" button to `DailyDQSView` and `MealDetailView` food items section
+- [ ] Extend `FoodBuddyUITests/DQSFlowUITests.swift` — verify add/edit/delete food item flows and that daily total updates after each mutation
+- [ ] Add UI-test fixture controls (launch arguments/env) to seed deterministic DQS sample data and isolate keychain/service state per test run
 - [ ] Update `README.md` — add DQS feature description with Racing Weight attribution
 - [ ] Update `AGENTS.md` with any lessons learned
 
@@ -380,12 +387,15 @@ The existing AI pipeline: `FoodAnalysisCoordinator` (`FoodBuddy/Services/FoodAna
 - [ ] Re-analysis replaces AI items but preserves manual edits
 - [ ] Racing Weight attribution visible in app and README
 - [ ] All existing + new unit tests pass on macOS
+- [ ] DQS UI flows (view, add, edit, delete, score recompute) are covered by simulator UI tests and pass in CI/local automation
 - [ ] iOS build succeeds with `CODE_SIGNING_ALLOWED=NO`
+- [ ] No blocking acceptance gate requires manual simulator interaction; manual runs are exploratory only
 
 ## Verification
 
 1. `xcodegen generate`
 2. `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64'` — all tests pass
-3. `xcodebuild build -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO` — build succeeds
-4. Manual test on simulator: capture meal → AI returns food items → daily score computed → edit food items → score updates → manual entry works
-5. Racing Weight attribution visible in DailyDQSView footer and README
+3. `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddyUITests -destination 'platform=iOS Simulator,name=iPhone 17'` — UI tests pass, including `DQSFlowUITests`
+4. `xcodebuild build -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO` — build succeeds
+5. `rg "Racing Weight" README.md FoodBuddy/Features/DQS` — attribution present in docs and app code
+6. Optional exploratory simulator pass: capture meal → AI returns food items → daily score computed → edit food items → score updates → manual entry works
