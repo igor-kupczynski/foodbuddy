@@ -1,5 +1,7 @@
 # FoodBuddy
 
+<img src="FoodBuddy/Assets.xcassets/AppIcon.appiconset/AppIcon.png" width="128" alt="FoodBuddy App Icon" />
+
 FoodBuddy is an iOS meal logger with meal-first history, editable meal timestamps, and iCloud sync for both meal metadata and meal photos.
 
 ## Overview
