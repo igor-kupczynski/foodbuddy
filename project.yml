@@ -19,7 +19,9 @@ targets:
       properties:
         NSCameraUsageDescription: FoodBuddy needs camera access to capture meal photos.
         NSPhotoLibraryUsageDescription: FoodBuddy needs photo library access to import meal photos.
-        UILaunchScreen: {}
+        UILaunchScreen:
+          UIColorName: AccentColor
+          UIImageName: LaunchLogo
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.igorkupczynski.foodbuddy
@@ -31,6 +33,7 @@ targets:
         CODE_SIGNING_ALLOWED: YES
         CODE_SIGNING_REQUIRED: NO
         CODE_SIGNING_ALLOWED[sdk=macosx*]: NO
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
 
   FoodBuddyDev:
     type: application
@@ -43,7 +46,9 @@ targets:
       properties:
         NSCameraUsageDescription: FoodBuddy needs camera access to capture meal photos.
         NSPhotoLibraryUsageDescription: FoodBuddy needs photo library access to import meal photos.
-        UILaunchScreen: {}
+        UILaunchScreen:
+          UIColorName: AccentColor
+          UIImageName: LaunchLogo
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: info.kupczynski.foodbuddy.dev
@@ -55,6 +60,7 @@ targets:
         CODE_SIGNING_ALLOWED: YES
         CODE_SIGNING_REQUIRED: YES
         DEVELOPMENT_TEAM:
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
 
   FoodBuddyCoreTests:
     type: bundle.unit-test
