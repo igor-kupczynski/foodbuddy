@@ -2,41 +2,17 @@
 
 FoodBuddy is an iOS meal logger with meal-first history, editable meal timestamps, and iCloud sync for both meal metadata and meal photos.
 
-## Current Status
+## Overview
 
-Iteration `003` from `docs/003-plan-photo-sync-reliability.md` is complete.
-Iteration `004` from `docs/004-plan-ipad-adaptive-ui.md` is implemented (adaptive iPad layout + split navigation).
-Iteration `005` from `docs/005-plan-viewport-capture-reassignment.md` is implemented (viewport/capture reliability + meal-type reassignment).
-Iteration `006` from `docs/006-plan-capture-sheet-blank-first-pick.md` is implemented.
-Iteration `007` from `docs/007-plan-ai-food-recognition.md` is implemented for local/mock validation; physical iPhone + real API-key validation remains pending.
-Iteration `010` from `docs/010-plan-dqs-scoring.md` is implemented.
+FoodBuddy is currently focused on:
 
-Implemented features:
+- Meal-first logging with multi-photo capture (`1..8` photos) and meal-type organization.
+- AI-assisted meal analysis (Mistral) with user notes, background processing, and retry flow.
+- Diet Quality Score (DQS) tracking with AI food categorization plus manual add/edit/delete of food items.
+- SwiftData persistence with CloudKit private-database sync behavior and local fallback.
+- iPhone and iPad adaptive UI, with automated unit/UI regression coverage.
 
-- Meal container model (`Meal`, `MealEntry`, `MealType`) with multiple entries per meal.
-- Camera/library ingest with suggested meal type and user override before save.
-- Photo preprocessing pipeline (max long edge `1600px`, JPEG compression, generated `320px` thumbnail).
-- `EntryPhotoAsset` sync model with deterministic entry linkage, retry metadata, and failure state.
-- Queue-based photo upload/download pipeline with exponential backoff retry handling.
-- Missing-photo hydration flow for metadata-only synced entries (placeholder -> thumbnail -> full image).
-- Editable `loggedAt` timestamp with confirmation when reassignment would move to another meal.
-- Meal-first history navigation with meal detail drill-down.
-- Meal type management (rename existing, add custom).
-- SwiftData metadata sync configured for CloudKit private DB with automatic local fallback.
-- CloudKit-backed photo asset store integration and sync diagnostics UI with manual retry controls.
-- Adaptive navigation shell: `NavigationStack` on compact width and `NavigationSplitView` on regular width.
-- Regular-width `EntryDetailView` two-column layout (image/content pane + metadata/actions pane).
-- Launch-screen metadata enforcement to prevent compatibility viewport/letterboxing regressions.
-- Hardened Add -> Take Photo presentation handoff and mock-camera capture seam for UI tests.
-- Entry detail meal-type reassignment flow with confirmation and service-level reassignment invariants.
-- Payload-driven Save Meal sheet presentation to prevent intermittent blank sheet on first library/camera pick.
-- Batch capture session (`1..8` photos) with in-sheet add/remove flow and optional meal notes.
-- Meal-level AI fields (`aiDescription`, `userNotes`, `aiAnalysisStatus`) with background analysis coordinator.
-- Mistral REST client with strict JSON-schema response format, defensive parsing, and mockable recognition service.
-- AI settings screen with Keychain-backed Mistral API key storage.
-- Meal detail AI states (`none/pending/analyzing/completed/failed`) with manual re-analyze flow.
-- Diet Quality Score (DQS) logging with AI-categorized food items, per-day score breakdowns, and manual add/edit/delete controls.
-- Automated verifier covering preprocessing bounds, ingest-to-pending queue behavior, upload state transitions, retry recovery, and hydration.
+Major work items are tracked in `docs/NNN-plan-*.md` (latest completed: `docs/010-plan-dqs-scoring.md`).
 
 ## Diet Quality Score Attribution
 
@@ -126,11 +102,10 @@ Run these checks on an iPad simulator before merge (portrait + landscape where n
 5. Complete one **Choose from Library** ingest flow end-to-end.
 6. Trigger **Retry Photo Sync** on a failed asset (or verify retry control is hidden when no failures exist).
 
-For 005 merges, re-run this checklist after iPhone viewport/capture changes.
 
-## Run on Your iPhone (Local Install Only)
+## Run on Your iPhone
 
-Default local-phone path uses scheme `FoodBuddyDev` (local-only mode, no CloudKit entitlement).
+Recommended default path uses scheme `FoodBuddyDev` (local-only mode, no CloudKit entitlement).
 
 1. Regenerate/open:
 
@@ -153,26 +128,19 @@ open FoodBuddy.xcodeproj
 
 Result: app runs on phone with local metadata fallback (no iCloud sync).
 
-007 physical iPhone smoke checks (required before merge):
+Suggested manual iPhone smoke checks:
 
 1. Capture a meal with 1-2 photos and verify save completes.
-2. If API key is configured in **AI Settings**, wait for AI description to move from `pending/analyzing` to `completed`.
-3. Edit notes in meal detail and tap **Re-analyze**; verify status transitions and updated description.
+2. Open the day in History and confirm DQS badge + Daily DQS screen render.
+3. Add/edit/delete one manual food item and verify daily score updates each time.
+4. If API key is configured in **AI Settings**, run re-analysis and verify AI description and AI-generated food items update.
 
 Optional CloudKit-enabled phone run:
 
-1. In `project.yml` under target `FoodBuddyDev`, set:
-
-```yaml
-CODE_SIGN_ENTITLEMENTS: FoodBuddy/App/FoodBuddy.entitlements
-```
-
-2. Run `xcodegen generate`.
-3. Keep Team/bundle ID consistent with your iCloud container setup.
-4. If you change container from `iCloud.info.kupczynski.foodbuddy`, update:
-- `FoodBuddy/App/FoodBuddy.entitlements`
-- `FoodBuddy/Support/Dependencies.swift`
-- `FoodBuddy/Support/PersistenceController.swift`
+1. Use scheme `FoodBuddy` (production app target with CloudKit entitlement).
+2. Configure signing for target `FoodBuddy` with your Team.
+3. Ensure bundle/container identifiers remain consistent with the baseline in `AGENTS.md`.
+4. Run on device and verify iCloud-backed sync behavior.
 
 For signing/cert/profile details, see `docs/APPLE_DEV_BASICS.md`.
 
