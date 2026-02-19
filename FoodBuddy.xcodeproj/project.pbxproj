@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -196,7 +196,7 @@
 		5779B7B4F7105F0560354236 /* CaptureSourceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSourceSheet.swift; sourceTree = "<group>"; };
 		5A751A33C3ED3FC084668149 /* MealEntryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEntryService.swift; sourceTree = "<group>"; };
 		5B027CC85DC7D0F912FBDEAF /* PlatformImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformImage.swift; sourceTree = "<group>"; };
-		5B76D93D1EAF6D9CD701CDEA /* FoodBuddyDev.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = FoodBuddyDev.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5B76D93D1EAF6D9CD701CDEA /* FoodBuddy Dev.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "FoodBuddy Dev.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6118740EDAEC903D34630E1B /* FoodItemEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodItemEditView.swift; sourceTree = "<group>"; };
 		621CCD8C1D76A98937D653C0 /* MealAIAnalysisStatusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealAIAnalysisStatusTests.swift; sourceTree = "<group>"; };
 		631278E2C5E7F6C4446E9EAA /* MockCameraCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockCameraCaptureView.swift; sourceTree = "<group>"; };
@@ -312,7 +312,7 @@
 			children = (
 				77361F74507B565632C6EE45 /* FoodBuddy.app */,
 				8A963FE6E238D055A0C2EC8E /* FoodBuddyCoreTests.xctest */,
-				5B76D93D1EAF6D9CD701CDEA /* FoodBuddyDev.app */,
+				5B76D93D1EAF6D9CD701CDEA /* FoodBuddy Dev.app */,
 				2AA17860A9959DC500C815F4 /* FoodBuddyUITests.xctest */,
 			);
 			name = Products;
@@ -500,7 +500,7 @@
 			packageProductDependencies = (
 			);
 			productName = FoodBuddyDev;
-			productReference = 5B76D93D1EAF6D9CD701CDEA /* FoodBuddyDev.app */;
+			productReference = 5B76D93D1EAF6D9CD701CDEA /* FoodBuddy Dev.app */;
 			productType = "com.apple.product-type.application";
 		};
 		FE6A620162D17697B6B6EDA4 /* FoodBuddyUITests */ = {
@@ -530,9 +530,6 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
-					BA389BB05096EEB6340AC6E5 = {
-						DevelopmentTeam = "";
-					};
 					FE6A620162D17697B6B6EDA4 = {
 						TestTargetID = 676A23FDC6A8A28C2080E53F;
 					};
@@ -548,7 +545,6 @@
 			);
 			mainGroup = B69DD2BB6822436B588B226E;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -950,7 +946,7 @@
 				CODE_SIGNING_REQUIRED = YES;
 				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = B7W9PMK2GK;
 				INFOPLIST_FILE = FoodBuddy/App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1030,7 +1026,7 @@
 				CODE_SIGNING_REQUIRED = YES;
 				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = B7W9PMK2GK;
 				INFOPLIST_FILE = FoodBuddy/App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
