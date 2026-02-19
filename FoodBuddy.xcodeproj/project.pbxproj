@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 63;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -23,6 +23,7 @@
 		1CD9029A47E66BDAE4C406DC /* ImageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE54001850B673CBEB4EFD96 /* ImageStore.swift */; };
 		1CDDAB320022F8BF8137C078 /* AISettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025DFCF54022CFCA15110FB4 /* AISettingsView.swift */; };
 		1E4F51E4168F20ACFE78AF7F /* MistralFoodRecognitionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4C7C4216B731AA98E8CA0BA /* MistralFoodRecognitionService.swift */; };
+		20A6EBF10884DEEBCE0B25D1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 429461C9C58EA811C8FF6702 /* Assets.xcassets */; };
 		2183544B110D00C1C599B035 /* EntryPhotoAsset.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D1D987E6F593072F19F3DB /* EntryPhotoAsset.swift */; };
 		24811547D5528931B8034B2D /* EntryPhotoAsset.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D1D987E6F593072F19F3DB /* EntryPhotoAsset.swift */; };
 		25D78E16A8E3863660CB1902 /* PersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02D037E70BE4AA1BD223F9F5 /* PersistenceController.swift */; };
@@ -128,6 +129,7 @@
 		C991572A3E004D1923175F40 /* MealEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35495D8E8FE2937FAE5B1170 /* MealEntry.swift */; };
 		C9ADD377011D8D1FD8DD2865 /* FoodItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12583F7EDE6A7B472EE83508 /* FoodItem.swift */; };
 		CB89A4F66A5EEE1B68348F49 /* CameraPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 271E17C477E438FE063E3813 /* CameraPicker.swift */; };
+		CF2AF02EAA423942292CCA87 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 429461C9C58EA811C8FF6702 /* Assets.xcassets */; };
 		D091A916E3030B8C31000F9E /* MetadataConflictResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6520E1369AC99ED710FB0A1A /* MetadataConflictResolver.swift */; };
 		D1CB6EE0AB5D62ECE1D0FE5B /* MetadataConflictResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6520E1369AC99ED710FB0A1A /* MetadataConflictResolver.swift */; };
 		D2B1BD14AD379DA7AEB00642 /* MealDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1FE2C5DB051EEE7DA94FBE5 /* MealDetailView.swift */; };
@@ -189,6 +191,7 @@
 		35659DD404E95165A17241C1 /* FoodBuddyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodBuddyApp.swift; sourceTree = "<group>"; };
 		3E3F95174077E88B2B991C89 /* SyncStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatus.swift; sourceTree = "<group>"; };
 		41F647BCB446385A4DE4C676 /* DQSFixtureSeeder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DQSFixtureSeeder.swift; sourceTree = "<group>"; };
+		429461C9C58EA811C8FF6702 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		492157BA0819BD3212F38857 /* FoodBuddy.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FoodBuddy.entitlements; sourceTree = "<group>"; };
 		553BB5132952AD1A5459D219 /* MetadataConflictResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataConflictResolverTests.swift; sourceTree = "<group>"; };
 		55FA85C02077513D332A96D2 /* MealType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealType.swift; sourceTree = "<group>"; };
@@ -196,7 +199,7 @@
 		5779B7B4F7105F0560354236 /* CaptureSourceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSourceSheet.swift; sourceTree = "<group>"; };
 		5A751A33C3ED3FC084668149 /* MealEntryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEntryService.swift; sourceTree = "<group>"; };
 		5B027CC85DC7D0F912FBDEAF /* PlatformImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformImage.swift; sourceTree = "<group>"; };
-		5B76D93D1EAF6D9CD701CDEA /* FoodBuddy Dev.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "FoodBuddy Dev.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		5B76D93D1EAF6D9CD701CDEA /* FoodBuddyDev.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = FoodBuddyDev.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6118740EDAEC903D34630E1B /* FoodItemEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodItemEditView.swift; sourceTree = "<group>"; };
 		621CCD8C1D76A98937D653C0 /* MealAIAnalysisStatusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealAIAnalysisStatusTests.swift; sourceTree = "<group>"; };
 		631278E2C5E7F6C4446E9EAA /* MockCameraCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockCameraCaptureView.swift; sourceTree = "<group>"; };
@@ -251,6 +254,7 @@
 		0B0BF70F07410B89099BB4C7 /* FoodBuddy */ = {
 			isa = PBXGroup;
 			children = (
+				429461C9C58EA811C8FF6702 /* Assets.xcassets */,
 				7F0DAB6126D508B6ADAEDFE4 /* App */,
 				63EF7B50D88DFD8CBFE0C12D /* Domain */,
 				2C5533285975FC48735E94C3 /* Features */,
@@ -312,7 +316,7 @@
 			children = (
 				77361F74507B565632C6EE45 /* FoodBuddy.app */,
 				8A963FE6E238D055A0C2EC8E /* FoodBuddyCoreTests.xctest */,
-				5B76D93D1EAF6D9CD701CDEA /* FoodBuddy Dev.app */,
+				5B76D93D1EAF6D9CD701CDEA /* FoodBuddyDev.app */,
 				2AA17860A9959DC500C815F4 /* FoodBuddyUITests.xctest */,
 			);
 			name = Products;
@@ -457,6 +461,7 @@
 			buildConfigurationList = C7B1656442A7593EF7D1E058 /* Build configuration list for PBXNativeTarget "FoodBuddy" */;
 			buildPhases = (
 				7213932F69D8413504C1F02A /* Sources */,
+				B30ADB65635924B1D776E851 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -491,6 +496,7 @@
 			buildConfigurationList = 5A75C470893813A1CBA21A88 /* Build configuration list for PBXNativeTarget "FoodBuddyDev" */;
 			buildPhases = (
 				2A1C75C30684F0BFC997DE53 /* Sources */,
+				6DFF7FA22A186E762CE65A4E /* Resources */,
 			);
 			buildRules = (
 			);
@@ -500,7 +506,7 @@
 			packageProductDependencies = (
 			);
 			productName = FoodBuddyDev;
-			productReference = 5B76D93D1EAF6D9CD701CDEA /* FoodBuddy Dev.app */;
+			productReference = 5B76D93D1EAF6D9CD701CDEA /* FoodBuddyDev.app */;
 			productType = "com.apple.product-type.application";
 		};
 		FE6A620162D17697B6B6EDA4 /* FoodBuddyUITests */ = {
@@ -530,6 +536,9 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					BA389BB05096EEB6340AC6E5 = {
+						DevelopmentTeam = "";
+					};
 					FE6A620162D17697B6B6EDA4 = {
 						TestTargetID = 676A23FDC6A8A28C2080E53F;
 					};
@@ -545,6 +554,7 @@
 			);
 			mainGroup = B69DD2BB6822436B588B226E;
 			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -555,6 +565,25 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		6DFF7FA22A186E762CE65A4E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CF2AF02EAA423942292CCA87 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B30ADB65635924B1D776E851 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				20A6EBF10884DEEBCE0B25D1 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		2A1C75C30684F0BFC997DE53 /* Sources */ = {
@@ -946,7 +975,7 @@
 				CODE_SIGNING_REQUIRED = YES;
 				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = B7W9PMK2GK;
+				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = FoodBuddy/App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1026,7 +1055,7 @@
 				CODE_SIGNING_REQUIRED = YES;
 				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = B7W9PMK2GK;
+				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = FoodBuddy/App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
