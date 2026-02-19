@@ -402,6 +402,53 @@ final class MealEntryServiceTests: XCTestCase {
         XCTAssertNil(meal.aiDescription)
     }
 
+
+    func testIngestNoteOnlyMealCreatesPendingMealWithoutEntries() throws {
+        let harness = try TestHarness.make()
+        defer { harness.cleanup() }
+
+        let service = harness.makeService(nowDates: [Date(timeIntervalSince1970: 100)])
+        try service.bootstrapMealTypesIfNeeded()
+        let breakfast = try XCTUnwrap(try mealType(named: "Breakfast", service: service))
+
+        let meal = try service.ingestNoteOnlyMeal(
+            mealTypeID: breakfast.id,
+            loggedAt: Date(timeIntervalSince1970: 100),
+            userNotes: "Oatmeal and banana",
+            aiAnalysisStatus: .pending
+        )
+
+        XCTAssertTrue(meal.entries.isEmpty)
+        XCTAssertEqual(meal.userNotes, "Oatmeal and banana")
+        XCTAssertEqual(meal.aiAnalysisStatus, .pending)
+        XCTAssertNil(meal.aiDescription)
+    }
+
+    func testDeleteMealRemovesMealAndImageFiles() throws {
+        let harness = try TestHarness.make()
+        defer { harness.cleanup() }
+
+        let service = harness.makeService(nowDates: [Date(timeIntervalSince1970: 100)])
+        try service.bootstrapMealTypesIfNeeded()
+        let breakfast = try XCTUnwrap(try mealType(named: "Breakfast", service: service))
+
+        let entry = try service.ingest(
+            image: TestImageFactory.make(color: .systemBlue),
+            mealTypeID: breakfast.id,
+            loggedAt: Date(timeIntervalSince1970: 100)
+        )
+        let meal = try XCTUnwrap(entry.meal)
+        let thumbnailFilename = try XCTUnwrap(entry.photoAsset?.thumbnailFilename)
+
+        XCTAssertTrue(harness.imageStore.fileExists(filename: entry.imageFilename))
+        XCTAssertTrue(harness.imageStore.fileExists(filename: thumbnailFilename))
+
+        try service.delete(meal: meal)
+
+        XCTAssertFalse(harness.imageStore.fileExists(filename: entry.imageFilename))
+        XCTAssertFalse(harness.imageStore.fileExists(filename: thumbnailFilename))
+        XCTAssertTrue(try harness.fetchMeals().isEmpty)
+    }
     func testDeleteEntryKeepsMealWhenMealHasFoodItems() throws {
         let harness = try TestHarness.make()
         defer { harness.cleanup() }

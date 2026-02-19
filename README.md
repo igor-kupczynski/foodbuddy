@@ -8,13 +8,13 @@ FoodBuddy is an iOS meal logger with meal-first history, editable meal timestamp
 
 FoodBuddy is currently focused on:
 
-- Meal-first logging with multi-photo capture (`1..8` photos) and meal-type organization.
+- Meal-first logging with multi-photo capture (`1..8` photos), note-only meals, and meal-type organization.
 - AI-assisted meal analysis (Mistral) with user notes, background processing, and retry flow.
 - Diet Quality Score (DQS) tracking with AI food categorization plus manual add/edit/delete of food items.
 - SwiftData persistence with CloudKit private-database sync behavior and local fallback.
 - iPhone and iPad adaptive UI, with automated unit/UI regression coverage.
 
-Major work items are tracked in `docs/NNN-plan-*.md` (latest completed: `docs/010-plan-dqs-scoring.md`).
+Major work items are tracked in `docs/NNN-plan-*.md` (latest completed: `docs/011-plan-note-only-swipe-delete.md`).
 
 ## Diet Quality Score Attribution
 
@@ -133,9 +133,12 @@ Result: app runs on phone with local metadata fallback (no iCloud sync).
 Suggested manual iPhone smoke checks:
 
 1. Capture a meal with 1-2 photos and verify save completes.
-2. Open the day in History and confirm DQS badge + Daily DQS screen render.
-3. Add/edit/delete one manual food item and verify daily score updates each time.
-4. If API key is configured in **AI Settings**, run re-analysis and verify AI description and AI-generated food items update.
+2. Add a note-only meal (no photo) and verify it appears in History.
+3. Open the day in History and confirm DQS badge + Daily DQS screen render.
+4. Swipe-delete one meal in History and verify the list updates.
+5. Add/edit/delete one manual food item and verify daily score updates each time.
+6. Swipe-delete one food item from Daily DQS or Meal Detail and verify score updates.
+7. If API key is configured in **AI Settings**, run note-only re-analysis and verify AI description + food items update.
 
 Optional CloudKit-enabled phone run:
 

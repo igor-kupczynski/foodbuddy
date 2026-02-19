@@ -65,7 +65,8 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
         guard let endpoint = Constants.endpoint else {
             throw FoodRecognitionServiceError.decodingError
         }
-        guard !images.isEmpty else {
+        let normalizedNotes = notes?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !images.isEmpty || !(normalizedNotes?.isEmpty ?? true) else {
             throw FoodRecognitionServiceError.decodingError
         }
 
@@ -83,7 +84,7 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
                 model: Constants.model,
                 messages: [
                     Message(role: "system", content: .text(Constants.systemPrompt)),
-                    Message(role: "user", content: .blocks(makeUserContent(images: images, notes: notes)))
+                    Message(role: "user", content: .blocks(makeUserContent(images: images, notes: normalizedNotes)))
                 ],
                 responseFormat: .strictFoodAnalysisSchema
             )
@@ -144,9 +145,12 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
             ContentBlock.imageURL("data:image/jpeg;base64,\(image.base64EncodedString())")
         }
 
-        let normalizedNotes = notes?.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let normalizedNotes, !normalizedNotes.isEmpty {
-            blocks.append(.text("Additional context: \(normalizedNotes)"))
+        if let notes, !notes.isEmpty {
+            if images.isEmpty {
+                blocks.append(.text("Meal note: \(notes)"))
+            } else {
+                blocks.append(.text("Additional context: \(notes)"))
+            }
         }
 
         return blocks

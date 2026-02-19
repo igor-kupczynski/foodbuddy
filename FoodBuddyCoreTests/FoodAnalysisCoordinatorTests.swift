@@ -39,6 +39,38 @@ final class FoodAnalysisCoordinatorTests: XCTestCase {
         XCTAssertEqual(callCount, 1)
     }
 
+    func testCoordinatorProcessesNoteOnlyPendingMeal() async throws {
+        let harness = try AnalysisHarness.make()
+        defer { harness.cleanup() }
+
+        let meal = try harness.makePendingNoteOnlyMeal()
+        let recognitionSpy = FoodRecognitionSpy(
+            behavior: .success(
+                FoodAnalysisResult(
+                    description: "Oatmeal with berries",
+                    foodItems: [AIFoodItem(name: "Oatmeal", categories: ["whole_grains"], servings: 1)]
+                )
+            )
+        )
+
+        let coordinator = FoodAnalysisCoordinator(
+            modelStore: FoodAnalysisModelStore(modelContext: harness.modelContext),
+            imageStore: harness.imageStore,
+            foodRecognitionService: recognitionSpy,
+            apiKeyStore: StaticCoordinatorAPIKeyStore(key: "configured")
+        )
+
+        await coordinator.processPendingMeals()
+
+        XCTAssertEqual(meal.aiAnalysisStatus, .completed)
+        XCTAssertEqual(meal.aiDescription, "Oatmeal with berries")
+
+        let calls = await recognitionSpy.recordedCalls()
+        XCTAssertEqual(calls.count, 1)
+        XCTAssertEqual(calls.first?.imageCount, 0)
+        XCTAssertEqual(calls.first?.notes, "Pending analysis")
+    }
+
     func testCoordinatorReanalysisReplacesAIItemsAndPreservesManualItems() async throws {
         let harness = try AnalysisHarness.make()
         defer { harness.cleanup() }
@@ -218,6 +250,19 @@ private final class AnalysisHarness {
         return try XCTUnwrap(entry.meal)
     }
 
+    func makePendingNoteOnlyMeal() throws -> Meal {
+        let service = MealEntryService(modelContext: modelContext, imageStore: imageStore)
+        try service.bootstrapMealTypesIfNeeded()
+        let mealType = try XCTUnwrap(try service.listMealTypes().first)
+
+        return try service.ingestNoteOnlyMeal(
+            mealTypeID: mealType.id,
+            loggedAt: Date(timeIntervalSince1970: 100),
+            userNotes: "Pending analysis",
+            aiAnalysisStatus: .pending
+        )
+    }
+
     func cleanup() {
         try? FileManager.default.removeItem(at: tempDirectory)
     }
@@ -234,12 +279,18 @@ private struct StaticCoordinatorAPIKeyStore: MistralAPIKeyStoring {
 }
 
 private actor FoodRecognitionSpy: FoodRecognitionService {
+    struct RecordedCall: Equatable {
+        let imageCount: Int
+        let notes: String?
+    }
+
     enum Behavior {
         case success(FoodAnalysisResult)
         case failure(FoodRecognitionServiceError)
     }
 
     private(set) var callCount = 0
+    private(set) var calls: [RecordedCall] = []
     private let behavior: Behavior
 
     init(behavior: Behavior) {
@@ -248,6 +299,7 @@ private actor FoodRecognitionSpy: FoodRecognitionService {
 
     func analyze(images: [Data], notes: String?) async throws -> FoodAnalysisResult {
         callCount += 1
+        calls.append(RecordedCall(imageCount: images.count, notes: notes))
         switch behavior {
         case .success(let response):
             return response
@@ -262,5 +314,9 @@ private actor FoodRecognitionSpy: FoodRecognitionService {
 
     func recordedCallCount() -> Int {
         callCount
+    }
+
+    func recordedCalls() -> [RecordedCall] {
+        calls
     }
 }

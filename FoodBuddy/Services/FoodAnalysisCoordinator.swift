@@ -2,13 +2,10 @@ import Foundation
 
 actor FoodAnalysisCoordinator {
     enum Error: Swift.Error, LocalizedError {
-        case missingImages
         case missingLocalImage(filename: String)
 
         var errorDescription: String? {
             switch self {
-            case .missingImages:
-                return "No images available for analysis"
             case .missingLocalImage(let filename):
                 return "Image file missing: \(filename)"
             }
@@ -88,11 +85,6 @@ actor FoodAnalysisCoordinator {
             }
             imageData.append(data)
         }
-
-        guard !imageData.isEmpty else {
-            throw Error.missingImages
-        }
-
         return imageData
     }
 

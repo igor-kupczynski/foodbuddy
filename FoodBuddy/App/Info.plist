@@ -23,6 +23,11 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>FoodBuddy needs photo library access to import meal photos.</string>
 	<key>UILaunchScreen</key>
-	<dict/>
+	<dict>
+		<key>UIColorName</key>
+		<string>AccentColor</string>
+		<key>UIImageName</key>
+		<string>LaunchLogo</string>
+	</dict>
 </dict>
 </plist>

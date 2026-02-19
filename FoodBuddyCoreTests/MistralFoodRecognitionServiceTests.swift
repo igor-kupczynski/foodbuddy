@@ -57,6 +57,33 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
         XCTAssertNotNil(properties["food_items"])
     }
 
+    func testAnalyzeBuildsNotesOnlyRequestPayload() async throws {
+        let session = makeMockedSession()
+        let service = MistralFoodRecognitionService(
+            apiKeyStore: StaticAPIKeyStore(key: "test-key"),
+            urlSession: session
+        )
+
+        var capturedRequest: URLRequest?
+        URLProtocolStub.requestHandler = { request in
+            capturedRequest = request
+            let body = #"{"choices":[{"message":{"content":"{\"description\":\"Oatmeal with berries\",\"food_items\":[{\"name\":\"Oatmeal\",\"categories\":[\"whole_grains\"],\"servings\":1}]}"}}]}"#
+            return try self.makeHTTPResponse(statusCode: 200, request: request, body: body)
+        }
+
+        _ = try await service.analyze(images: [], notes: "oatmeal with blueberries")
+
+        let request = try XCTUnwrap(capturedRequest)
+        let bodyData = try XCTUnwrap(extractBodyData(from: request))
+        let bodyObject = try XCTUnwrap(try JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+        let messages = try XCTUnwrap(bodyObject["messages"] as? [[String: Any]])
+        let userContent = try XCTUnwrap(messages[1]["content"] as? [[String: Any]])
+
+        XCTAssertEqual(userContent.count, 1)
+        XCTAssertEqual(userContent[0]["type"] as? String, "text")
+        XCTAssertEqual(userContent[0]["text"] as? String, "Meal note: oatmeal with blueberries")
+    }
+
     func testAnalyzeParsesDescriptionAndFoodItems() async throws {
         let session = makeMockedSession()
         let service = MistralFoodRecognitionService(
@@ -174,6 +201,22 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
             XCTFail("Expected noAPIKey error")
         } catch let error as FoodRecognitionServiceError {
             XCTAssertEqual(error, .noAPIKey)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testAnalyzeWithoutImagesAndNotesThrowsDecodingError() async {
+        let service = MistralFoodRecognitionService(
+            apiKeyStore: StaticAPIKeyStore(key: "test-key"),
+            urlSession: makeMockedSession()
+        )
+
+        do {
+            _ = try await service.analyze(images: [], notes: nil)
+            XCTFail("Expected decodingError")
+        } catch let error as FoodRecognitionServiceError {
+            XCTAssertEqual(error, .decodingError)
         } catch {
             XCTFail("Unexpected error: \(error)")
         }

@@ -28,6 +28,7 @@ final class MealEntryService: MealEntryIngesting {
         case missingMealType
         case missingMeal
         case emptyCaptureSession
+        case emptyMealNotes
         case capturePhotoLimitExceeded
     }
 
@@ -125,6 +126,34 @@ final class MealEntryService: MealEntryIngesting {
             userNotes: userNotes,
             aiAnalysisStatus: aiAnalysisStatus
         )
+    }
+    
+    @discardableResult
+    func ingestNoteOnlyMeal(
+        mealTypeID: UUID,
+        loggedAt: Date,
+        userNotes: String?,
+        aiAnalysisStatus: AIAnalysisStatus
+    ) throws -> Meal {
+        let notes = normalizedNotes(userNotes)
+        guard notes != nil else {
+            throw Error.emptyMealNotes
+        }
+        guard try mealTypeService.fetchType(id: mealTypeID) != nil else {
+            throw Error.missingMealType
+        }
+
+        let meal = try mealService.meal(for: mealTypeID, loggedAt: loggedAt)
+        mealService.touch(meal)
+        meal.userNotes = notes
+        meal.aiAnalysisStatus = aiAnalysisStatus
+        meal.aiAnalysisErrorDetails = nil
+        if aiAnalysisStatus == .pending {
+            meal.aiDescription = nil
+        }
+
+        try save()
+        return meal
     }
 
     func updateMealNotes(_ notes: String?, for meal: Meal) throws {
@@ -255,6 +284,32 @@ final class MealEntryService: MealEntryIngesting {
             return
         }
         try delete(entry: entry)
+    }
+
+    func delete(meal: Meal) throws {
+        let filesToDelete = Set(
+            meal.entries.flatMap { entry in
+                [
+                    entry.imageFilename,
+                    entry.photoAsset?.fullImageFilename,
+                    entry.photoAsset?.thumbnailFilename
+                ].compactMap { $0 }
+            }
+        )
+
+        for filename in filesToDelete {
+            try imageStore.deleteImage(filename: filename)
+        }
+
+        modelContext.delete(meal)
+        try save()
+    }
+
+    func delete(mealID: UUID) throws {
+        guard let meal = try mealService.fetchMeal(id: mealID) else {
+            return
+        }
+        try delete(meal: meal)
     }
 
     func updateLoggedAt(

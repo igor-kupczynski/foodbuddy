@@ -48,6 +48,10 @@ struct HistoryView: View {
     @State private var isShowingMealTypeManagement = false
     @State private var isShowingSyncDiagnostics = false
     @State private var isShowingAISettings = false
+    @State private var isShowingNoteOnlyMealSheet = false
+    @State private var noteOnlyLoggedAt = Date.now
+    @State private var noteOnlySuggestedMealTypeID: UUID?
+
 
     @State private var hasBootstrappedMealTypes = false
     @State private var isRunningPhotoSync = false
@@ -175,6 +179,10 @@ struct HistoryView: View {
                     queueCapturePresentation(for: .library)
                 }
 
+                Button("Add Note Only") {
+                    presentNoteOnlySheet()
+                }
+
                 Button("Cancel", role: .cancel) {}
             }
             .fullScreenCover(item: $activeCaptureSource, onDismiss: handleCaptureDismissal) { source in
@@ -209,6 +217,17 @@ struct HistoryView: View {
                     initialMealTypeID: capture.suggestedMealTypeID,
                     onSave: saveCaptureSession,
                     onCancel: clearPendingCapture,
+                )
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+            }
+            .sheet(isPresented: $isShowingNoteOnlyMealSheet) {
+                NoteOnlyMealSheet(
+                    mealTypes: mealTypes,
+                    loggedAt: noteOnlyLoggedAt,
+                    initialMealTypeID: noteOnlySuggestedMealTypeID,
+                    onSave: saveNoteOnlyMeal,
+                    onCancel: { isShowingNoteOnlyMealSheet = false }
                 )
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
@@ -274,6 +293,13 @@ struct HistoryView: View {
                             } label: {
                                 mealRow(for: meal)
                             }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    deleteMeal(meal)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                         }
                     } header: {
                         dayHeader(for: dayGroup)
@@ -305,6 +331,13 @@ struct HistoryView: View {
                             ForEach(dayGroup.meals) { meal in
                                 mealRow(for: meal)
                                     .tag(Optional(meal.id))
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            deleteMeal(meal)
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                    }
                             }
                         } header: {
                             dayHeader(for: dayGroup)
@@ -422,7 +455,7 @@ struct HistoryView: View {
         ContentUnavailableView(
             "No Meals Yet",
             systemImage: "fork.knife.circle",
-            description: Text("Tap Add to capture or choose a meal photo.")
+            description: Text("Tap Add to capture, choose a meal photo, or create a note-only meal.")
         )
         .frame(maxWidth: .infinity)
     }
@@ -468,6 +501,18 @@ struct HistoryView: View {
     private func queueCapturePresentation(for source: CaptureSource) {
         DispatchQueue.main.async {
             activeCaptureSource = source
+        }
+    }
+
+    private func presentNoteOnlySheet() {
+        let loggedAt = Date.now
+
+        do {
+            noteOnlyLoggedAt = loggedAt
+            noteOnlySuggestedMealTypeID = try service.suggestedMealType(for: loggedAt)?.id ?? mealTypes.first?.id
+            isShowingNoteOnlyMealSheet = true
+        } catch {
+            ingestErrorMessage = error.localizedDescription
         }
     }
 
@@ -532,6 +577,36 @@ struct HistoryView: View {
                 await runPhotoSyncCycle()
                 await runFoodAnalysisCycle()
             }
+        } catch {
+            ingestErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func saveNoteOnlyMeal(_ payload: NoteOnlyMealPayload) {
+        do {
+            let aiStatus: AIAnalysisStatus = hasConfiguredAPIKey() ? .pending : .none
+            _ = try service.ingestNoteOnlyMeal(
+                mealTypeID: payload.mealTypeID,
+                loggedAt: payload.loggedAt,
+                userNotes: payload.notes,
+                aiAnalysisStatus: aiStatus
+            )
+
+            isShowingNoteOnlyMealSheet = false
+            reconcileSelectionIfNeeded()
+
+            Task {
+                await runFoodAnalysisCycle()
+            }
+        } catch {
+            ingestErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func deleteMeal(_ meal: Meal) {
+        do {
+            try service.delete(meal: meal)
+            reconcileSelectionIfNeeded()
         } catch {
             ingestErrorMessage = error.localizedDescription
         }

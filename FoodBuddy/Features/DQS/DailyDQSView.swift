@@ -10,6 +10,7 @@ struct DailyDQSView: View {
         var id: UUID { meal.id }
     }
 
+    @Environment(\.modelContext) private var modelContext
     @Query private var meals: [Meal]
     @Query(sort: [SortDescriptor(\MealType.displayName)]) private var mealTypes: [MealType]
 
@@ -17,6 +18,11 @@ struct DailyDQSView: View {
     private let scoringEngine = DQSScoringEngine()
 
     @State private var isShowingManualItemSheet = false
+    @State private var errorMessage: String?
+
+    private var foodItemService: FoodItemService {
+        Dependencies.makeFoodItemService(modelContext: modelContext)
+    }
 
     init(date: Date) {
         let dayStart = Calendar.current.startOfDay(for: date)
@@ -49,7 +55,7 @@ struct DailyDQSView: View {
                 if lhs.name == rhs.name {
                     return lhs.category.displayName < rhs.category.displayName
                 }
-                return lhs.name < rhs.name
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
             })
 
             guard !items.isEmpty else {
@@ -62,6 +68,17 @@ struct DailyDQSView: View {
                 items: items
             )
         }
+    }
+
+    private var isShowingError: Binding<Bool> {
+        Binding(
+            get: { errorMessage != nil },
+            set: { newValue in
+                if !newValue {
+                    errorMessage = nil
+                }
+            }
+        )
     }
 
     var body: some View {
@@ -101,26 +118,31 @@ struct DailyDQSView: View {
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(mealGroups) { group in
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(group.mealTypeName)
-                                .font(.subheadline.weight(.semibold))
+                        Text(group.mealTypeName)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
 
-                            ForEach(group.items) { item in
-                                NavigationLink {
-                                    FoodItemEditView(foodItem: item)
+                        ForEach(group.items) { item in
+                            NavigationLink {
+                                FoodItemEditView(foodItem: item)
+                            } label: {
+                                foodItemRow(item)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("dqs-food-item-row-\(item.id.uuidString)")
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(item.name)
+                            .accessibilityValue(
+                                "\(item.category.displayName), \(item.servings.formatted(.number.precision(.fractionLength(0...1)))) servings"
+                            )
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    deleteFoodItem(item)
                                 } label: {
-                                    foodItemRow(item)
+                                    Label("Delete", systemImage: "trash")
                                 }
-                                .buttonStyle(.plain)
-                                .accessibilityIdentifier("dqs-food-item-row-\(item.id.uuidString)")
-                                .accessibilityElement(children: .ignore)
-                                .accessibilityLabel(item.name)
-                                .accessibilityValue(
-                                    "\(item.category.displayName), \(item.servings.formatted(.number.precision(.fractionLength(0...1)))) servings"
-                                )
                             }
                         }
-                        .padding(.vertical, 4)
                     }
                 }
             } footer: {
@@ -140,6 +162,11 @@ struct DailyDQSView: View {
         .sheet(isPresented: $isShowingManualItemSheet) {
             ManualFoodItemSheet(source: .day(date: date))
         }
+        .alert("Could Not Update Food Item", isPresented: isShowingError, actions: {
+            Button("OK", role: .cancel) {}
+        }, message: {
+            Text(errorMessage ?? "Unknown error")
+        })
     }
 
     private func categoryRow(_ breakdown: DQSScoringEngine.CategoryBreakdown) -> some View {
@@ -174,6 +201,14 @@ struct DailyDQSView: View {
                 .padding(.vertical, 4)
                 .background(.thinMaterial)
                 .clipShape(Capsule())
+        }
+    }
+
+    private func deleteFoodItem(_ item: FoodItem) {
+        do {
+            try foodItemService.deleteFoodItem(item)
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 
