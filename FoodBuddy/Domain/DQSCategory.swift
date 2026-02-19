@@ -13,6 +13,11 @@ enum DQSCategory: String, Codable, CaseIterable, Sendable {
     case friedFoods
     case fattyProteins
 
+    struct GuideContent: Sendable {
+        let servingGuide: String
+        let examples: [String]
+    }
+
     var displayName: String {
         switch self {
         case .fruits:
@@ -37,6 +42,66 @@ enum DQSCategory: String, Codable, CaseIterable, Sendable {
             return "Fried Foods"
         case .fattyProteins:
             return "Fatty Proteins"
+        }
+    }
+
+    var guideContent: GuideContent {
+        switch self {
+        case .fruits:
+            return GuideContent(
+                servingGuide: "1 medium piece, a big handful of berries, or 1 glass of 100% juice.",
+                examples: ["Apples", "Bananas", "Berries", "Oranges", "100% orange juice"]
+            )
+        case .vegetables:
+            return GuideContent(
+                servingGuide: "1 fist-sized portion, 1/2 cup vegetable sauce, or a bowl of salad/soup.",
+                examples: ["Leafy greens", "Broccoli", "Carrots", "Tomatoes", "Vegetable soup"]
+            )
+        case .leanMeatsAndFish:
+            return GuideContent(
+                servingGuide: "1 palm-sized portion.",
+                examples: ["Chicken breast", "Turkey", "White fish", "Salmon", "Eggs"]
+            )
+        case .legumesAndPlantProteins:
+            return GuideContent(
+                servingGuide: "About 1/2-1 cup cooked or one palm-sized protein portion.",
+                examples: ["Beans", "Lentils", "Chickpeas", "Tofu", "Tempeh"]
+            )
+        case .nutsAndSeeds:
+            return GuideContent(
+                servingGuide: "A palmful or 1 heaping tablespoon nut/seed butter.",
+                examples: ["Almonds", "Walnuts", "Peanuts", "Chia seeds", "Natural peanut butter"]
+            )
+        case .wholeGrains:
+            return GuideContent(
+                servingGuide: "1 fist-sized portion of cooked grains, 1 bowl of whole-grain cereal/pasta, or 2 slices whole-grain bread.",
+                examples: ["Brown rice", "Oats", "Quinoa", "100% whole-grain bread", "Whole-wheat pasta"]
+            )
+        case .dairy:
+            return GuideContent(
+                servingGuide: "1 glass of milk, 2 slices of cheese, or 1 yogurt tub.",
+                examples: ["Milk", "Greek yogurt", "Cheddar cheese", "Cottage cheese", "Kefir"]
+            )
+        case .refinedGrains:
+            return GuideContent(
+                servingGuide: "Use the same portion references as grains (fist-sized cooked, bowl, or 2 slices bread).",
+                examples: ["White rice", "White bread", "Regular pasta", "Sugary cereals", "Pastries"]
+            )
+        case .sweets:
+            return GuideContent(
+                servingGuide: "Treat one small dessert/drink portion as 1 serving.",
+                examples: ["Candy", "Cake", "Sweetened soda", "Ice cream", "Sweetened yogurt"]
+            )
+        case .friedFoods:
+            return GuideContent(
+                servingGuide: "One side-sized serving (for example a small basket or handful).",
+                examples: ["French fries", "Fried chicken", "Fried snacks", "Potato chips", "Tempura"]
+            )
+        case .fattyProteins:
+            return GuideContent(
+                servingGuide: "1 palm-sized portion.",
+                examples: ["Bacon", "Sausage", "Pepperoni", "Marbled steak", "Processed deli meats"]
+            )
         }
     }
 

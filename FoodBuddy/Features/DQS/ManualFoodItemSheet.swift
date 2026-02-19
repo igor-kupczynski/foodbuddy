@@ -16,6 +16,7 @@ struct ManualFoodItemSheet: View {
     @State private var servings: Double = 1
     @State private var mealTypes: [MealType] = []
     @State private var selectedMealTypeID: UUID?
+    @State private var isShowingCategoryGuide = false
     @State private var errorMessage: String?
 
     private var mealTypeService: MealTypeService {
@@ -54,6 +55,13 @@ struct ManualFoodItemSheet: View {
                         }
                     }
                     .accessibilityIdentifier("dqs-manual-food-item-category")
+
+                    Button {
+                        isShowingCategoryGuide = true
+                    } label: {
+                        Label("Category & Serving Help", systemImage: "questionmark.circle")
+                    }
+                    .accessibilityIdentifier("dqs-manual-food-item-help")
 
                     Stepper(value: $servings, in: 0.5...20, step: 0.5) {
                         Text("Servings: \(servings.formatted(.number.precision(.fractionLength(0...1))))")
@@ -96,6 +104,9 @@ struct ManualFoodItemSheet: View {
             }
             .task {
                 await loadMealTypesIfNeeded()
+            }
+            .sheet(isPresented: $isShowingCategoryGuide) {
+                DQSCategoryGuideView()
             }
             .alert("Could Not Save Food Item", isPresented: isShowingError, actions: {
                 Button("OK", role: .cancel) {}

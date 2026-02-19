@@ -23,6 +23,23 @@ final class DQSFlowUITests: XCTestCase {
         XCTAssertTrue(element(withIdentifier: "dqs-category-row-fruits", in: app).waitForExistence(timeout: 5))
     }
 
+    func testCategoryHelpShowsServingGuideAndExamples() throws {
+        let app = launchAppWithFixture()
+        openDailyView(app: app)
+
+        let helpButton = element(withIdentifier: "dqs-category-help-button", in: app)
+        XCTAssertTrue(helpButton.waitForExistence(timeout: 5))
+        helpButton.tap()
+
+        XCTAssertTrue(app.navigationBars["DQS Category Help"].waitForExistence(timeout: 5))
+        XCTAssertTrue(element(withIdentifier: "dqs-category-help-row-fruits", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(element(withIdentifier: "dqs-category-help-serving-fruits", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(element(withIdentifier: "dqs-category-help-examples-vegetables", in: app).waitForExistence(timeout: 5))
+
+        app.buttons["dqs-category-help-done"].tap()
+        XCTAssertTrue(app.navigationBars["Daily DQS"].waitForExistence(timeout: 5))
+    }
+
     func testAddEditDeleteFoodItemUpdatesDailyScore() throws {
         let app = launchAppWithFixture()
         openDailyView(app: app)

@@ -10,11 +10,11 @@ FoodBuddy is currently focused on:
 
 - Meal-first logging with multi-photo capture (`1..8` photos), note-only meals, and meal-type organization.
 - AI-assisted meal analysis (Mistral) with user notes, background processing, and retry flow.
-- Diet Quality Score (DQS) tracking with AI food categorization plus manual add/edit/delete of food items.
+- Diet Quality Score (DQS) tracking with AI food categorization, in-app category/portion guidance, and manual add/edit/delete of food items.
 - SwiftData persistence with CloudKit private-database sync behavior and local fallback.
 - iPhone and iPad adaptive UI, with automated unit/UI regression coverage.
 
-Major work items are tracked in `docs/NNN-plan-*.md` (latest completed: `docs/011-plan-note-only-swipe-delete.md`).
+Major work items are tracked in `docs/NNN-plan-*.md` (latest completed: `docs/012-plan-dqs-category-help.md`).
 
 ## Diet Quality Score Attribution
 

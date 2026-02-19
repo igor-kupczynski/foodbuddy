@@ -15,6 +15,7 @@
 		090A3B6772099077C9FAE66E /* MealTypeManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 568838D20BA0FC7B3F7A18F4 /* MealTypeManagementView.swift */; };
 		0C0635621ADA6020EDB4A259 /* CaptureSessionLimits.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCC54739A91612286D43CDE7 /* CaptureSessionLimits.swift */; };
 		0EB4F5CD1EE8534055868428 /* PlatformImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B027CC85DC7D0F912FBDEAF /* PlatformImage.swift */; };
+		0EB9CFF1FAF873288EED7394 /* DQSCategoryGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C74452ED460542088C412CD1 /* DQSCategoryGuideView.swift */; };
 		0F6D3F31087C05386D3F3095 /* DQSFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 829DAF53A110ED8CB101D0F9 /* DQSFlowUITests.swift */; };
 		12E245B3FBBE3495DD660CFC /* HistorySelectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9C3C20D3180E5F754E01820 /* HistorySelectionState.swift */; };
 		189F0663F13CC69E0C067D31 /* PhotoAssetSyncState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9917F34ACD123DC0DCEEEF21 /* PhotoAssetSyncState.swift */; };
@@ -43,6 +44,7 @@
 		3707AC883C9765BD4ABBCF87 /* MealTypeManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 568838D20BA0FC7B3F7A18F4 /* MealTypeManagementView.swift */; };
 		37BD3DFC2EA066CF3B6706D8 /* EntryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFE849E4935E718002026407 /* EntryDetailView.swift */; };
 		387AE7B4DE980DEE74B3935E /* MealEntryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECD0F55D985A8070DFD31F2E /* MealEntryServiceTests.swift */; };
+		3C3FC78B67C6DCE9B58AC3AF /* DQSCategoryGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C74452ED460542088C412CD1 /* DQSCategoryGuideView.swift */; };
 		3E13705D17B30A84BF499FB7 /* MealService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CF457AE1EDD1E82869800D /* MealService.swift */; };
 		3FF9691FCF28F333BBAB91BB /* Dependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE9A27E147657D9ACC677493 /* Dependencies.swift */; };
 		42CA41DE1E083B7BE72A48A3 /* MealEntryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A751A33C3ED3FC084668149 /* MealEntryService.swift */; };
@@ -232,6 +234,7 @@
 		B7F216B6A1AB7100E1B5EB30 /* CapturePresentationUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapturePresentationUITests.swift; sourceTree = "<group>"; };
 		BBD056372DAB5E3DD95F4D6E /* DQSCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DQSCategory.swift; sourceTree = "<group>"; };
 		BCC54739A91612286D43CDE7 /* CaptureSessionLimits.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSessionLimits.swift; sourceTree = "<group>"; };
+		C74452ED460542088C412CD1 /* DQSCategoryGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DQSCategoryGuideView.swift; sourceTree = "<group>"; };
 		C755DF9CF511D4715D44CA1E /* UpdatedAtVersioned.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdatedAtVersioned.swift; sourceTree = "<group>"; };
 		C99E9DE840DC51DE8D4691FD /* TestImageFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestImageFactory.swift; sourceTree = "<group>"; };
 		C9C3C20D3180E5F754E01820 /* HistorySelectionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistorySelectionState.swift; sourceTree = "<group>"; };
@@ -273,6 +276,7 @@
 			children = (
 				B5F1122E60EA1D29726DA553 /* DailyDQSView.swift */,
 				FF10C8C6C4004538AD935EE5 /* DailyScoreBadge.swift */,
+				C74452ED460542088C412CD1 /* DQSCategoryGuideView.swift */,
 				6118740EDAEC903D34630E1B /* FoodItemEditView.swift */,
 				20DC3040B646D7B40F2BF749 /* ManualFoodItemSheet.swift */,
 			);
@@ -605,6 +609,7 @@
 				F16AEAEB5140D26C8053603E /* CaptureSourceSheet.swift in Sources */,
 				AAA491936ABBA5F3D6F8406B /* CloudPhotoStore.swift in Sources */,
 				D5348D061F43A6951AA08BFD /* DQSCategory.swift in Sources */,
+				0EB9CFF1FAF873288EED7394 /* DQSCategoryGuideView.swift in Sources */,
 				642E5DABE8F767DEFED24515 /* DQSFixtureSeeder.swift in Sources */,
 				27030910E1307E1FD1C46538 /* DQSScoringEngine.swift in Sources */,
 				EBA0EDA2348C006551C20D08 /* DailyDQSView.swift in Sources */,
@@ -666,6 +671,7 @@
 				C7AC8C1B4E2941968ED1A202 /* CaptureSourceSheet.swift in Sources */,
 				1C3159C3A9FBD85D0564A935 /* CloudPhotoStore.swift in Sources */,
 				BABE18DF14B4F3F476760E56 /* DQSCategory.swift in Sources */,
+				3C3FC78B67C6DCE9B58AC3AF /* DQSCategoryGuideView.swift in Sources */,
 				9436E8B8627C74F725103AD4 /* DQSFixtureSeeder.swift in Sources */,
 				4AC18A9C4CC8D07567D4624A /* DQSScoringEngine.swift in Sources */,
 				BDAB1FD653BF8B347776440B /* DailyDQSView.swift in Sources */,

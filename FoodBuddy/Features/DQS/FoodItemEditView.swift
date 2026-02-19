@@ -9,6 +9,7 @@ struct FoodItemEditView: View {
     @State private var name: String
     @State private var category: DQSCategory
     @State private var servings: Double
+    @State private var isShowingCategoryGuide = false
     @State private var isShowingDeleteConfirmation = false
     @State private var errorMessage: String?
 
@@ -47,6 +48,13 @@ struct FoodItemEditView: View {
                 }
                 .accessibilityIdentifier("dqs-food-item-edit-category")
 
+                Button {
+                    isShowingCategoryGuide = true
+                } label: {
+                    Label("Category & Serving Help", systemImage: "questionmark.circle")
+                }
+                .accessibilityIdentifier("dqs-food-item-edit-help")
+
                 Stepper(value: $servings, in: 0.5...20, step: 0.5) {
                     Text("Servings: \(servings.formatted(.number.precision(.fractionLength(0...1))))")
                 }
@@ -75,6 +83,9 @@ struct FoodItemEditView: View {
                 }
                 .accessibilityIdentifier("dqs-food-item-edit-save")
             }
+        }
+        .sheet(isPresented: $isShowingCategoryGuide) {
+            DQSCategoryGuideView()
         }
         .confirmationDialog(
             "Delete this food item?",

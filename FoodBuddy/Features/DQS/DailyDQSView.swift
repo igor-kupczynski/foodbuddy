@@ -18,6 +18,7 @@ struct DailyDQSView: View {
     private let scoringEngine = DQSScoringEngine()
 
     @State private var isShowingManualItemSheet = false
+    @State private var isShowingCategoryGuide = false
     @State private var errorMessage: String?
 
     private var foodItemService: FoodItemService {
@@ -152,12 +153,26 @@ struct DailyDQSView: View {
         .navigationTitle("Daily DQS")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    isShowingCategoryGuide = true
+                } label: {
+                    Label("Category Help", systemImage: "questionmark.circle")
+                        .labelStyle(.iconOnly)
+                        .accessibilityLabel("Category Help")
+                }
+                .accessibilityIdentifier("dqs-category-help-button")
+            }
+
             ToolbarItem(placement: .topBarTrailing) {
                 Button("+ Add Food Item") {
                     isShowingManualItemSheet = true
                 }
                 .accessibilityIdentifier("dqs-add-food-item")
             }
+        }
+        .sheet(isPresented: $isShowingCategoryGuide) {
+            DQSCategoryGuideView()
         }
         .sheet(isPresented: $isShowingManualItemSheet) {
             ManualFoodItemSheet(source: .day(date: date))
