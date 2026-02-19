@@ -22,6 +22,8 @@ The DQS feature is inspired by *Racing Weight* by Matt Fitzgerald.
 
 ## Development Requirements
 
+> `FoodBuddy.xcodeproj` is **not checked into git** — it is generated from `project.yml`. Run `xcodegen generate` after cloning or pulling.
+
 ### Required
 
 - macOS with Xcode 26.2+
