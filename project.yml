@@ -21,7 +21,6 @@ targets:
         NSPhotoLibraryUsageDescription: FoodBuddy needs photo library access to import meal photos.
         UILaunchScreen:
           UIColorName: AccentColor
-          UIImageName: LaunchLogo
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.igorkupczynski.foodbuddy
@@ -48,7 +47,6 @@ targets:
         NSPhotoLibraryUsageDescription: FoodBuddy needs photo library access to import meal photos.
         UILaunchScreen:
           UIColorName: AccentColor
-          UIImageName: LaunchLogo
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: info.kupczynski.foodbuddy.dev
