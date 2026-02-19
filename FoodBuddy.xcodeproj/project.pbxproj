@@ -541,7 +541,7 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					BA389BB05096EEB6340AC6E5 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = B7W9PMK2GK;
 					};
 					FE6A620162D17697B6B6EDA4 = {
 						TestTargetID = 676A23FDC6A8A28C2080E53F;
@@ -984,7 +984,7 @@
 				CODE_SIGNING_REQUIRED = YES;
 				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = B7W9PMK2GK;
 				INFOPLIST_FILE = FoodBuddy/App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1065,7 +1065,7 @@
 				CODE_SIGNING_REQUIRED = YES;
 				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = B7W9PMK2GK;
 				INFOPLIST_FILE = FoodBuddy/App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
