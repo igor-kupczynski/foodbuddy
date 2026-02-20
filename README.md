@@ -112,9 +112,12 @@ API key precedence:
 make eval-case-001
 # or
 make eval-run CASE=case-001
+# or (more control)
+cd evals && swift run FoodBuddyAIEvals --case case-001 --timeout-seconds 240
 ```
 
 The run writes a JSON artifact to `evals/results/`.
+If the primary URLSession request times out/cancels, the runner retries once via `curl` to surface clearer HTTP diagnostics in the artifact/console.
 
 ## Run on iOS Simulator
 

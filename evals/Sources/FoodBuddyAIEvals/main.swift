@@ -28,7 +28,8 @@ struct FoodBuddyAIEvals {
                 caseRoot: caseRoot,
                 model: resolvedModel,
                 apiKey: apiKey,
-                apiKeySource: apiKeySource
+                apiKeySource: apiKeySource,
+                timeoutSeconds: config.timeoutSeconds
             )
 
             try writeResult(result, to: outputURL)
@@ -49,13 +50,14 @@ private struct CLIConfig {
     let modelOverride: String?
     let evalRootPath: String?
     let outputDirPath: String?
+    let timeoutSeconds: TimeInterval
     let showHelp: Bool
 
     static let helpText = """
     FoodBuddy AI Evals
 
     Usage:
-      swift run FoodBuddyAIEvals --case <case-id> [--api-key <key>] [--model <model-id>] [--eval-root <path>] [--output-dir <path>]
+      swift run FoodBuddyAIEvals --case <case-id> [--api-key <key>] [--model <model-id>] [--eval-root <path>] [--output-dir <path>] [--timeout-seconds <seconds>]
 
     API key resolution priority:
       1) --api-key
@@ -69,6 +71,7 @@ private struct CLIConfig {
         var modelOverride: String?
         var evalRootPath: String?
         var outputDirPath: String?
+        var timeoutSeconds: TimeInterval = 180
         var showHelp = false
 
         var index = 0
@@ -92,6 +95,13 @@ private struct CLIConfig {
             case "--output-dir":
                 index += 1
                 outputDirPath = try value(for: arg, at: index, in: arguments)
+            case "--timeout-seconds":
+                index += 1
+                let raw = try value(for: arg, at: index, in: arguments)
+                guard let parsed = TimeInterval(raw), parsed > 0 else {
+                    throw CLIError.invalidArgument("Invalid value for --timeout-seconds: \(raw)")
+                }
+                timeoutSeconds = parsed
             default:
                 throw CLIError.invalidArgument("Unknown argument: \(arg)")
             }
@@ -104,6 +114,7 @@ private struct CLIConfig {
             modelOverride: modelOverride,
             evalRootPath: evalRootPath,
             outputDirPath: outputDirPath,
+            timeoutSeconds: timeoutSeconds,
             showHelp: showHelp
         )
     }
@@ -399,7 +410,8 @@ private func runEval(
     caseRoot: URL,
     model: String,
     apiKey: String,
-    apiKeySource: APIKeySource
+    apiKeySource: APIKeySource,
+    timeoutSeconds: TimeInterval
 ) async -> EvalRunResult {
     var notes: [String] = []
     var hardGates = HardGates(http2xx: false, topLevelDecoded: false, contentJSONParsed: false, schemaConformant: false)
@@ -436,14 +448,17 @@ private func runEval(
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+    request.timeoutInterval = timeoutSeconds
+    let requestBody: Data
 
     do {
-        request.httpBody = try FoodAnalysisRequestFactory.makeJSONData(
+        requestBody = try FoodAnalysisRequestFactory.makeJSONData(
             model: model,
             images: imageData,
             notes: evalCase.notes,
             categoryIdentifiers: FoodAnalysisCategories.all
         )
+        request.httpBody = requestBody
     } catch {
         notes.append("Failed to encode request payload: \(error)")
         return buildResult(
@@ -461,15 +476,75 @@ private func runEval(
         )
     }
 
+    var receivedData: Data?
+    var receivedResponse: URLResponse?
     let start = Date()
     do {
         let (data, response) = try await URLSession.shared.data(for: request)
         latencyMs = Int(Date().timeIntervalSince(start) * 1_000)
+        receivedData = data
+        receivedResponse = response
+    } catch {
+        latencyMs = Int(Date().timeIntervalSince(start) * 1_000)
+        if let urlError = error as? URLError {
+            notes.append("Network call failed (\(urlError.code.rawValue): \(urlError.code)).")
+            notes.append("Underlying: \(urlError.localizedDescription)")
+            let nsError = urlError as NSError
+            if let failingURL = nsError.userInfo[NSURLErrorFailingURLStringErrorKey] as? String {
+                notes.append("Failing URL: \(failingURL)")
+            }
+            if urlError.code == .timedOut {
+                notes.append("Request timed out after \(Int(timeoutSeconds))s. Try a higher --timeout-seconds value (e.g. 240).")
+            } else if urlError.code == .cancelled, let latencyMs, latencyMs >= 90_000 {
+                notes.append("Cancellation happened after ~\(latencyMs)ms, which often indicates an upstream timeout for long-running requests.")
+                notes.append("Try a faster model (e.g. --model mistral-small-latest) or simplify prompt/schema to confirm.")
+            }
+
+            if [.timedOut, .cancelled].contains(urlError.code) {
+                notes.append("Retrying once with curl transport for better diagnostics.")
+                do {
+                    let fallback = try performCurlFallbackRequest(
+                        requestBody: requestBody,
+                        apiKey: apiKey,
+                        timeoutSeconds: timeoutSeconds
+                    )
+                    if let existingLatency = latencyMs {
+                        latencyMs = existingLatency + fallback.latencyMs
+                    } else {
+                        latencyMs = fallback.latencyMs
+                    }
+                    receivedData = fallback.body
+                    receivedResponse = HTTPURLResponse(
+                        url: request.url!,
+                        statusCode: fallback.statusCode,
+                        httpVersion: nil,
+                        headerFields: nil
+                    )
+                    if let stderr = fallback.stderr, !stderr.isEmpty {
+                        notes.append("curl stderr: \(truncateForLog(stderr, maxChars: 300))")
+                    }
+                    notes.append("curl fallback completed (HTTP \(fallback.statusCode)).")
+                } catch {
+                    notes.append("curl fallback failed: \(error.localizedDescription)")
+                }
+            }
+        } else {
+            notes.append("Network call failed: \(error.localizedDescription)")
+        }
+    }
+
+    if let data = receivedData {
         rawResponseBody = String(data: data, encoding: .utf8)
 
-        if let httpResponse = response as? HTTPURLResponse {
+        if let httpResponse = receivedResponse as? HTTPURLResponse {
             httpStatus = httpResponse.statusCode
             hardGates.http2xx = (200..<300).contains(httpResponse.statusCode)
+            if !hardGates.http2xx {
+                notes.append("HTTP \(httpResponse.statusCode) from Mistral.")
+                if let rawResponseBody {
+                    notes.append("Response preview: \(truncateForLog(rawResponseBody, maxChars: 500))")
+                }
+            }
         } else {
             notes.append("Non-HTTP response received.")
         }
@@ -493,9 +568,6 @@ private func runEval(
         if hardGates.http2xx, actualPayload == nil {
             notes.append("HTTP succeeded but payload could not be parsed and validated.")
         }
-    } catch {
-        latencyMs = Int(Date().timeIntervalSince(start) * 1_000)
-        notes.append("Network call failed: \(error.localizedDescription)")
     }
 
     return buildResult(
@@ -772,6 +844,106 @@ private func writeResult(_ result: EvalRunResult, to fileURL: URL) throws {
     }
 }
 
+private struct CurlFallbackResult {
+    let statusCode: Int
+    let body: Data
+    let stderr: String?
+    let latencyMs: Int
+}
+
+private enum CurlFallbackError: LocalizedError {
+    case launchFailed(String)
+    case nonZeroExit(Int32, String)
+    case invalidOutput(String)
+    case invalidStatusCode(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .launchFailed(let message):
+            return "curl launch failed: \(message)"
+        case .nonZeroExit(let code, let stderr):
+            return "curl exited with code \(code): \(stderr)"
+        case .invalidOutput(let message):
+            return "curl output parse failed: \(message)"
+        case .invalidStatusCode(let value):
+            return "curl returned invalid HTTP status: \(value)"
+        }
+    }
+}
+
+private func performCurlFallbackRequest(
+    requestBody: Data,
+    apiKey: String,
+    timeoutSeconds: TimeInterval
+) throws -> CurlFallbackResult {
+    let marker = "__HTTP_STATUS__:"
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/curl")
+    process.arguments = [
+        "-sS",
+        "--connect-timeout", String(Int(ceil(timeoutSeconds))),
+        "--max-time", String(Int(ceil(timeoutSeconds))),
+        "https://api.mistral.ai/v1/chat/completions",
+        "-H", "Authorization: Bearer \(apiKey)",
+        "-H", "Content-Type: application/json",
+        "--data-binary", "@-",
+        "-w", "\n\(marker)%{http_code}\n"
+    ]
+
+    let stdinPipe = Pipe()
+    let stdoutPipe = Pipe()
+    let stderrPipe = Pipe()
+    process.standardInput = stdinPipe
+    process.standardOutput = stdoutPipe
+    process.standardError = stderrPipe
+
+    let start = Date()
+    do {
+        try process.run()
+    } catch {
+        throw CurlFallbackError.launchFailed(error.localizedDescription)
+    }
+
+    stdinPipe.fileHandleForWriting.write(requestBody)
+    try? stdinPipe.fileHandleForWriting.close()
+    process.waitUntilExit()
+    let latencyMs = Int(Date().timeIntervalSince(start) * 1_000)
+
+    let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+    let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+    let stderrText = String(data: stderrData, encoding: .utf8) ?? ""
+
+    guard process.terminationStatus == 0 else {
+        throw CurlFallbackError.nonZeroExit(process.terminationStatus, stderrText)
+    }
+
+    guard let stdoutText = String(data: stdoutData, encoding: .utf8),
+          let markerRange = stdoutText.range(of: marker, options: .backwards) else {
+        throw CurlFallbackError.invalidOutput("missing HTTP status marker")
+    }
+
+    let bodyText = String(stdoutText[..<markerRange.lowerBound]).trimmingCharacters(in: .newlines)
+    let statusText = String(stdoutText[markerRange.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let statusCode = Int(statusText) else {
+        throw CurlFallbackError.invalidStatusCode(statusText)
+    }
+
+    return CurlFallbackResult(
+        statusCode: statusCode,
+        body: Data(bodyText.utf8),
+        stderr: stderrText.isEmpty ? nil : stderrText,
+        latencyMs: latencyMs
+    )
+}
+
+private func truncateForLog(_ value: String, maxChars: Int) -> String {
+    guard value.count > maxChars else {
+        return value
+    }
+    let endIndex = value.index(value.startIndex, offsetBy: maxChars)
+    return String(value[..<endIndex]) + "..."
+}
+
 private func printSummary(result: EvalRunResult, outputURL: URL) {
     print("Case: \(result.caseID) (\(result.caseFileID))")
     print("Model: \(result.model)")
@@ -792,6 +964,9 @@ private func printSummary(result: EvalRunResult, outputURL: URL) {
         for note in result.notes {
             print("- \(note)")
         }
+    }
+    if result.status == "FAIL", let responseBody = result.responseBody, !responseBody.isEmpty {
+        print("Response preview: \(truncateForLog(responseBody, maxChars: 500))")
     }
     print("Artifact: \(outputURL.path)")
 }

@@ -63,3 +63,4 @@
 - AI analysis should accept a notes-only payload when no meal photos exist; enforce this at both layers: coordinator/model-store image loading and the API request builder/content blocks. If only one layer is updated, note-only meals silently fail.
 - For DQS category guidance, keep serving-size and example-food copy centralized in `DQSCategory` and reuse it across help entry points to avoid drift between add/edit/day views.
 - When extracting AI payload logic to a shared package, add a parity test that shared schema category identifiers exactly match app `DQSCategory` identifiers; this prevents silent request-schema drift between app and eval harness.
+- For local evals, long-running URLSession calls to Mistral vision+schema can surface as `URLError.cancelled` near ~100s; keep a curl fallback path for clearer diagnostics and to distinguish transport issues from payload/schema issues.
