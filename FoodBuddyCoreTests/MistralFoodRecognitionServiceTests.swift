@@ -1,4 +1,5 @@
 import Foundation
+import FoodBuddyAIShared
 import XCTest
 
 final class MistralFoodRecognitionServiceTests: XCTestCase {
@@ -220,6 +221,14 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
         } catch {
             XCTFail("Unexpected error: \(error)")
         }
+    }
+
+    func testSharedCategoryIdentifiersMatchDQSCategoryIdentifiers() {
+        let shared = Set(FoodAnalysisCategories.all)
+        let app = Set(DQSCategory.allCases.map(\.apiIdentifier))
+
+        XCTAssertEqual(shared, app)
+        XCTAssertEqual(FoodAnalysisCategories.all.count, app.count)
     }
 
     private func assertHTTPError(statusCode: Int) async throws {
