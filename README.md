@@ -22,7 +22,7 @@ The DQS feature is inspired by *Racing Weight* by Matt Fitzgerald.
 
 ## Development Requirements
 
-> `FoodBuddy.xcodeproj` is **not checked into git** — it is generated from `project.yml`. Run `xcodegen generate` after cloning or pulling.
+> `FoodBuddy.xcodeproj` is **not checked into git** — it is generated from `project.yml`. Run `make xcodegen` (or `xcodegen generate`) after cloning or pulling.
 
 ### Required
 
@@ -121,7 +121,7 @@ The run writes a JSON artifact to `evals/results/`.
 1. Generate and open the project:
 
 ```bash
-xcodegen generate
+make xcodegen
 open FoodBuddy.xcodeproj
 ```
 
@@ -153,7 +153,7 @@ Recommended default path uses scheme `FoodBuddyDev` (local-only mode, no CloudKi
 1. Regenerate/open:
 
 ```bash
-xcodegen generate
+make xcodegen
 open FoodBuddy.xcodeproj
 ```
 

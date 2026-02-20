@@ -29,6 +29,7 @@
 ### Running Tests
 
 - Selective verification is required; do not run heavyweight full-app checks when a narrower scope suffices.
+- Prefer `Makefile` wrappers (`make test-core`, `make build-ios`, `make ai-shared-test`, `make eval-build`, `make eval-run CASE=...`) for standard local workflows; use raw `xcodebuild`/`swift` commands for fine-grained targeting.
 - **App fast verifier (unit tests, macOS):** `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64'` (pipe to `xcbeautify` if installed).
 - **App iOS build check (no signing):** `xcodebuild build -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO`
 - **UI tests (simulator):** `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddyUITests -destination 'platform=iOS Simulator,name=iPhone 17'`

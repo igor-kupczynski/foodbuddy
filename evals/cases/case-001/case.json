@@ -7,12 +7,14 @@
     "images/02.jpg"
   ],
   "expected": {
-    "pass_threshold": 75,
-    "servings_tolerance": 0.5,
+    "pass_threshold": 80,
+    "servings_tolerance": 0.75,
     "description": {
       "min_sentences": 1,
       "max_sentences": 3,
-      "must_contain": []
+      "must_contain": [
+        "pasta"
+      ]
     },
     "food_items": null
   }
