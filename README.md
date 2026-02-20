@@ -14,7 +14,7 @@ FoodBuddy is currently focused on:
 - SwiftData persistence with CloudKit private-database sync behavior and local fallback.
 - iPhone and iPad adaptive UI, with automated unit/UI regression coverage.
 
-Major work items are tracked in `docs/NNN-plan-*.md` (latest completed: `docs/012-plan-dqs-category-help.md`).
+Major work items are tracked in `docs/NNN-plan-*.md` (latest completed: `docs/013-plan-ai-evals-sidecar-swiftpm.md`).
 
 ## Diet Quality Score Attribution
 
@@ -29,6 +29,7 @@ The DQS feature is inspired by *Racing Weight* by Matt Fitzgerald.
 - macOS with Xcode 26.2+
 - Swift 6.2+ (bundled with Xcode)
 - `xcodegen` (project generation)
+- `make` (task runner; built into macOS)
 
 ### Recommended
 
@@ -50,32 +51,70 @@ xcodegen --version
 gh --version
 ```
 
-## Local Test Workflow
+## Local Workflow
+
+### Task Runner
+
+Common commands are available via `Makefile`:
 
 ```bash
-# Regenerate project from project.yml
-xcodegen generate
-
-# Guardrail: fail fast if launch-screen metadata is missing
-./scripts/assert-launch-screen-config.sh
-
-# Build app target without signing (CI-style gate)
-xcodebuild build -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO | xcbeautify
-
-# Fast verifier tests (no iOS simulator required)
-xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64' | xcbeautify
-
-# Capture presentation UI regression tests (mock camera path)
-xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddyUITests -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:FoodBuddyUITests/CapturePresentationUITests | xcbeautify
-
-# DQS flow UI regression tests (score view + add/edit/delete)
-xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddyUITests -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:FoodBuddyUITests/DQSFlowUITests | xcbeautify
-
-# Verify local-phone scheme also builds
-xcodebuild build -project FoodBuddy.xcodeproj -scheme FoodBuddyDev -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO | xcbeautify
+make xcodegen
+make launch-screen-guard
+make test-core
+make build-ios
+make build-ios-dev
+make ai-shared-test
+make eval-build
+make eval-run CASE=case-001
 ```
 
-If `xcbeautify` is not installed, run the same `xcodebuild test` commands without the pipe.
+### Selective Verification Matrix
+
+Run only what matches your changed scope:
+
+- App source / `project.yml`: `make xcodegen`, `make launch-screen-guard`, `make test-core`
+- App build/signing/capability changes: `make build-ios` (and `make build-ios-dev` when relevant)
+- Shared AI package (`Packages/FoodBuddyAIShared`): `make ai-shared-test` and `make test-core`
+- Evals sidecar only (`evals/`): `make eval-build` (plus `make eval-run CASE=...` for live checks)
+- UI flow changes: run targeted `FoodBuddyUITests` suites via `xcodebuild test ... -only-testing:...`
+
+If `xcbeautify` is installed, pipe the `xcodebuild` commands to it for cleaner output.
+
+## AI Evals (SwiftPM Sidecar)
+
+The eval harness is a separate Swift package under `evals/` and does not require opening Xcode UI.
+
+### Setup
+
+1. Add your local key:
+
+```bash
+cp evals/.env.example evals/.env
+# then edit evals/.env and set MISTRAL_API_KEY
+```
+
+API key precedence:
+- `--api-key` CLI flag
+- `MISTRAL_API_KEY` environment variable
+- `evals/.env`
+
+2. Put case fixtures here:
+- `evals/cases/case-001/images/01.jpg`
+- `evals/cases/case-001/images/02.jpg`
+
+3. (Optional but recommended) set expectations in `evals/cases/case-001/case.json`:
+- `expected.description` constraints
+- `expected.food_items` expected names/categories/servings
+
+### Run
+
+```bash
+make eval-case-001
+# or
+make eval-run CASE=case-001
+```
+
+The run writes a JSON artifact to `evals/results/`.
 
 ## Run on iOS Simulator
 
@@ -161,8 +200,14 @@ FoodBuddy/
   Services/
   Storage/
   Support/
+Packages/
+  FoodBuddyAIShared/
 FoodBuddyCoreTests/
 FoodBuddyUITests/
+evals/
+  cases/
+  results/
+scripts/
 docs/
 ```
 

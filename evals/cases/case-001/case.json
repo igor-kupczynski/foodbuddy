@@ -1,0 +1,19 @@
+{
+  "id": "case-001-two-images-no-notes",
+  "model": "mistral-large-latest",
+  "notes": null,
+  "images": [
+    "images/01.jpg",
+    "images/02.jpg"
+  ],
+  "expected": {
+    "pass_threshold": 75,
+    "servings_tolerance": 0.5,
+    "description": {
+      "min_sentences": 1,
+      "max_sentences": 3,
+      "must_contain": []
+    },
+    "food_items": null
+  }
+}

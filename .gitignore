@@ -16,6 +16,10 @@ Package.resolved
 *.log
 *.tmp
 
+# Local eval secrets + artifacts
+evals/.env
+evals/results/*.json
+
 # Editor / tooling
 .vscode/
 .idea/

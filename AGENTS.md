@@ -12,6 +12,7 @@
 - Keep `AGENTS.md` and `README.md` up to date throughout implementation work.
 - Keep a current `Development Requirements` section in `README.md` (tooling, versions, setup commands).
 - Keep `README.md` run guidance concise and current for local automated tests, simulator runs, and physical iPhone runs.
+- Keep monorepo boundaries explicit: iOS app (`FoodBuddy/`), shared AI package (`Packages/FoodBuddyAIShared`), eval sidecar (`evals/`).
 - Do not make changes outside this repository.
 - Make small, focused git commits as milestones are completed.
 - Do not commit secrets or private data to the repository. Assume we will opensource it soon.
@@ -20,15 +21,19 @@
 
 ## Rules of Engagement
 
-- Before coding: run `xcodegen generate` to sync `FoodBuddy.xcodeproj` from `project.yml`.
+- Before coding app/Xcode project changes: run `xcodegen generate` to sync `FoodBuddy.xcodeproj` from `project.yml`.
+- For evals-only or shared-package-only work that does not touch `project.yml`/app targets, `xcodegen generate` is optional.
 - Metadata sync baseline is SwiftData + CloudKit private DB with local fallback; preserve this behavior unless the active plan says otherwise.
 - When changing behavior, update/add tests first or in the same change and keep the verifier green before finalizing.
 
 ### Running Tests
 
-- **Fast local verifier (unit tests, macOS):** `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64'` (pipe to `xcbeautify` if installed).
-- **iOS build check (no signing):** `xcodebuild build -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO`
+- Selective verification is required; do not run heavyweight full-app checks when a narrower scope suffices.
+- **App fast verifier (unit tests, macOS):** `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64'` (pipe to `xcbeautify` if installed).
+- **App iOS build check (no signing):** `xcodebuild build -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO`
 - **UI tests (simulator):** `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddyUITests -destination 'platform=iOS Simulator,name=iPhone 17'`
+- **Shared AI package tests:** `cd Packages/FoodBuddyAIShared && swift test`
+- **Eval sidecar build/run:** `cd evals && swift build` and `cd evals && swift run FoodBuddyAIEvals --case <case-id>`
 - `FoodBuddyCoreTests` target is macOS-only (`SUPPORTED_PLATFORMS = macosx`). Run with `-destination 'platform=macOS'` or the `arch=x86_64` variant, not iOS Simulator destinations.
 
 ### Running the App
@@ -56,3 +61,4 @@
 - When service-layer errors are caught and discarded (e.g. in a coordinator's `catch` block), persist a diagnostic string on the model so failures are debuggable. Include: error description, error type, HTTP status/response body if applicable, entity context (IDs, counts), timestamp, and `Thread.callStackSymbols`. Surface via a tappable "Show details" sheet with a Copy button to keep the default UI clean.
 - AI analysis should accept a notes-only payload when no meal photos exist; enforce this at both layers: coordinator/model-store image loading and the API request builder/content blocks. If only one layer is updated, note-only meals silently fail.
 - For DQS category guidance, keep serving-size and example-food copy centralized in `DQSCategory` and reuse it across help entry points to avoid drift between add/edit/day views.
+- When extracting AI payload logic to a shared package, add a parity test that shared schema category identifiers exactly match app `DQSCategory` identifiers; this prevents silent request-schema drift between app and eval harness.
