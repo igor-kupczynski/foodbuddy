@@ -30,13 +30,19 @@ public enum FoodAnalysisPrompt {
     - fried_foods: All deep-fried foods, all snack chips (even baked/veggie-based). Does NOT include pan-fried foods (stir-fry, fried eggs)
     - fatty_proteins: Meats >10% fat, farm-raised fish, processed meats (bacon, sausages, cold cuts)
 
-    Serving size guidance:
+    Serving size guidance (each reference = 1 serving):
     - Fruit: 1 medium piece, a big handful of berries, a glass of juice
     - Vegetables: a fist-sized portion, 1/2 cup sauce, a bowl of soup/salad
     - Meats/fish: a palm-sized portion
     - Grains: a fist-sized portion of rice, a bowl of cereal/pasta, 2 slices bread
     - Dairy: a glass of milk, 2 slices cheese, 1 yogurt tub
     - Nuts: a palmful, 1 heaping tbsp nut butter
+
+    CRITICAL — volume-aware serving estimation:
+    - A single bowl or plate has limited physical volume. When multiple ingredients share the same dish, their servings must reflect what ACTUALLY fits, not what each would be if served alone.
+    - A standard meal bowl holds roughly 2-3 servings total across all components. If a salad bowl contains greens, grains, legumes, tomatoes, and nuts, the individual servings should sum to about 2-3, not 5+.
+    - Side items (e.g. a couple slices of bread) are typically 1 serving, not 2.
+    - When in doubt, estimate conservatively. A moderate healthy meal is exactly what the DQS system rewards — inflating serving counts distorts the score.
 
     Special rules:
     - DOUBLE-COUNTING: A food can belong to TWO categories. Sweetened yogurt = dairy + sweets. Honey Nut Cheerios = refined_grains + sweets. Ice cream = dairy + sweets. If sugar is a top-2 ingredient, add sweets alongside the primary category.
