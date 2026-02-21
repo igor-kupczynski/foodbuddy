@@ -29,7 +29,7 @@
 ### Running Tests
 
 - Selective verification is required; do not run heavyweight full-app checks when a narrower scope suffices.
-- Prefer `Makefile` wrappers (`make test-core`, `make build-ios`, `make ai-shared-test`, `make eval-build`, `make eval-run CASE=...`) for standard local workflows; use raw `xcodebuild`/`swift` commands for fine-grained targeting.
+- Prefer `Makefile` wrappers (`make test-core`, `make build-ios`, `make ai-shared-test`, `make eval-build`, `make eval-run`, `make eval-run-case CASE=...`) for standard local workflows; use raw `xcodebuild`/`swift` commands for fine-grained targeting.
 - **App fast verifier (unit tests, macOS):** `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64'` (pipe to `xcbeautify` if installed).
 - **App iOS build check (no signing):** `xcodebuild build -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO`
 - **UI tests (simulator):** `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddyUITests -destination 'platform=iOS Simulator,name=iPhone 17'`
@@ -63,4 +63,5 @@
 - AI analysis should accept a notes-only payload when no meal photos exist; enforce this at both layers: coordinator/model-store image loading and the API request builder/content blocks. If only one layer is updated, note-only meals silently fail.
 - For DQS category guidance, keep serving-size and example-food copy centralized in `DQSCategory` and reuse it across help entry points to avoid drift between add/edit/day views.
 - When extracting AI payload logic to a shared package, add a parity test that shared schema category identifiers exactly match app `DQSCategory` identifiers; this prevents silent request-schema drift between app and eval harness.
-- For local evals, long-running URLSession calls to Mistral vision+schema can surface as `URLError.cancelled` near ~100s; keep a curl fallback path for clearer diagnostics and to distinguish transport issues from payload/schema issues.
+- For local evals, keep transport parity with the app: use URLSession-only requests and capture actionable timeout/cancellation diagnostics in eval notes/artifacts rather than adding a separate curl transport path.
+- For Mistral streaming calls, bound non-2xx body preview reads (don’t wait for full EOF), and retry transient HTTP `408/429/5xx` plus retryable `URLError`s; this avoids masking upstream failures as generic cancellation and improves reliability diagnostics.

@@ -5,7 +5,9 @@ public enum FoodAnalysisRequestFactory {
         model: String,
         images: [Data],
         notes: String?,
-        categoryIdentifiers: [String]
+        categoryIdentifiers: [String],
+        stream: Bool = false,
+        maxTokens: Int? = nil
     ) throws -> Data {
         let normalizedNotes = notes?.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !images.isEmpty || !(normalizedNotes?.isEmpty ?? true) else {
@@ -18,7 +20,9 @@ public enum FoodAnalysisRequestFactory {
                 Message(role: "system", content: .text(FoodAnalysisPrompt.system)),
                 Message(role: "user", content: .blocks(makeUserContent(images: images, notes: normalizedNotes)))
             ],
-            responseFormat: .strictFoodAnalysisSchema(categoryIdentifiers: categoryIdentifiers)
+            responseFormat: .strictFoodAnalysisSchema(categoryIdentifiers: categoryIdentifiers),
+            stream: stream,
+            maxTokens: maxTokens
         )
 
         do {
@@ -49,11 +53,15 @@ private struct MistralRequest: Encodable {
     let model: String
     let messages: [Message]
     let responseFormat: ResponseFormat
+    let stream: Bool?
+    let maxTokens: Int?
 
     enum CodingKeys: String, CodingKey {
         case model
         case messages
         case responseFormat = "response_format"
+        case stream
+        case maxTokens = "max_tokens"
     }
 }
 

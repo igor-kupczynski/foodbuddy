@@ -1,5 +1,8 @@
 import FoodBuddyAIShared
+import CoreGraphics
 import Foundation
+import ImageIO
+import UniformTypeIdentifiers
 
 @main
 struct FoodBuddyAIEvals {
@@ -196,19 +199,6 @@ private struct ExpectedFoodItem: Decodable, Encodable {
     let servings: Double
 }
 
-private struct MistralEnvelope: Decodable {
-    let choices: [MistralChoice]
-    let usage: MistralUsage?
-}
-
-private struct MistralChoice: Decodable {
-    let message: MistralMessage
-}
-
-private struct MistralMessage: Decodable {
-    let content: String?
-}
-
 private struct MistralUsage: Decodable, Encodable {
     let promptTokens: Int?
     let completionTokens: Int?
@@ -262,6 +252,9 @@ private struct EvalRunResult: Encodable {
     let threshold: Double?
     let apiKeySource: APIKeySource
     let latencyMs: Int?
+    let requestBodyBytes: Int?
+    let timeToFirstByteMs: Int?
+    let streamCompleted: Bool?
     let httpStatus: Int?
     let hardGates: HardGates
     let componentScores: ComponentScores
@@ -281,6 +274,9 @@ private struct EvalRunResult: Encodable {
         case threshold
         case apiKeySource = "api_key_source"
         case latencyMs = "latency_ms"
+        case requestBodyBytes = "request_body_bytes"
+        case timeToFirstByteMs = "time_to_first_byte_ms"
+        case streamCompleted = "stream_completed"
         case httpStatus = "http_status"
         case hardGates = "hard_gates"
         case componentScores = "component_scores"
@@ -329,8 +325,10 @@ private func loadCase(id: String, evalRoot: URL) throws -> EvalCase {
     }
 
     let evalCase = try JSONDecoder().decode(EvalCase.self, from: data)
-    guard !evalCase.images.isEmpty else {
-        throw CLIError.invalidCase("Case \(id) must include at least one image.")
+    let hasImages = !evalCase.images.isEmpty
+    let hasNotes = !(evalCase.notes?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "").isEmpty
+    guard hasImages || hasNotes else {
+        throw CLIError.invalidCase("Case \(id) must include at least one image or non-empty notes.")
     }
     return evalCase
 }
@@ -417,15 +415,20 @@ private func runEval(
     var hardGates = HardGates(http2xx: false, topLevelDecoded: false, contentJSONParsed: false, schemaConformant: false)
     var httpStatus: Int?
     var latencyMs: Int?
+    var requestBodyBytes: Int?
+    var timeToFirstByteMs: Int?
+    var streamCompleted: Bool?
     var usage: MistralUsage?
     var actualPayload: FoodAnalysisPayload?
     var rawResponseBody: String?
 
     var imageData: [Data] = []
     imageData.reserveCapacity(evalCase.images.count)
+    var sourceImageBytes = 0
+    var preparedImageBytes = 0
     for imagePath in evalCase.images {
         let url = caseRoot.appendingPathComponent(imagePath)
-        guard let data = FileManager.default.contents(atPath: url.path) else {
+        guard let sourceData = FileManager.default.contents(atPath: url.path) else {
             notes.append("Could not load image fixture at \(url.path).")
             return buildResult(
                 evalCase: evalCase,
@@ -433,6 +436,9 @@ private func runEval(
                 model: model,
                 apiKeySource: apiKeySource,
                 latencyMs: latencyMs,
+                requestBodyBytes: requestBodyBytes,
+                timeToFirstByteMs: timeToFirstByteMs,
+                streamCompleted: streamCompleted,
                 httpStatus: httpStatus,
                 hardGates: hardGates,
                 usage: usage,
@@ -441,24 +447,36 @@ private func runEval(
                 notes: notes
             )
         }
-        imageData.append(data)
+        sourceImageBytes += sourceData.count
+        let preparedData = preprocessImageForAnalysis(sourceData)
+        preparedImageBytes += preparedData.count
+        imageData.append(preparedData)
+    }
+    if sourceImageBytes > 0 {
+        let ratio = Double(preparedImageBytes) / Double(sourceImageBytes)
+        notes.append(
+            "Prepared image bytes: \(preparedImageBytes) (from \(sourceImageBytes), ratio \(String(format: "%.2f", ratio)))."
+        )
     }
 
     var request = URLRequest(url: URL(string: "https://api.mistral.ai/v1/chat/completions")!)
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+    request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
     request.timeoutInterval = timeoutSeconds
-    let requestBody: Data
 
     do {
-        requestBody = try FoodAnalysisRequestFactory.makeJSONData(
+        let requestBody = try FoodAnalysisRequestFactory.makeJSONData(
             model: model,
             images: imageData,
             notes: evalCase.notes,
-            categoryIdentifiers: FoodAnalysisCategories.all
+            categoryIdentifiers: FoodAnalysisCategories.all,
+            stream: true,
+            maxTokens: 400
         )
         request.httpBody = requestBody
+        requestBodyBytes = requestBody.count
     } catch {
         notes.append("Failed to encode request payload: \(error)")
         return buildResult(
@@ -467,6 +485,9 @@ private func runEval(
             model: model,
             apiKeySource: apiKeySource,
             latencyMs: latencyMs,
+            requestBodyBytes: requestBodyBytes,
+            timeToFirstByteMs: timeToFirstByteMs,
+            streamCompleted: streamCompleted,
             httpStatus: httpStatus,
             hardGates: hardGates,
             usage: usage,
@@ -476,17 +497,98 @@ private func runEval(
         )
     }
 
-    var receivedData: Data?
-    var receivedResponse: URLResponse?
-    let start = Date()
-    do {
-        let (data, response) = try await URLSession.shared.data(for: request)
-        latencyMs = Int(Date().timeIntervalSince(start) * 1_000)
-        receivedData = data
-        receivedResponse = response
-    } catch {
-        latencyMs = Int(Date().timeIntervalSince(start) * 1_000)
-        if let urlError = error as? URLError {
+    let runStart = Date()
+    let maxAttempts = 3
+    attemptLoop: for attempt in 1...maxAttempts {
+        let attemptStart = Date()
+        do {
+            let (bytes, response) = try await URLSession.shared.bytes(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                notes.append("Non-HTTP response received.")
+                break attemptLoop
+            }
+
+            httpStatus = httpResponse.statusCode
+            hardGates.http2xx = (200..<300).contains(httpResponse.statusCode)
+
+            if !hardGates.http2xx {
+                let bodyPreview = await collectBodyPreview(
+                    from: bytes,
+                    maxChars: 2_000,
+                    maxLines: 8,
+                    startedAt: attemptStart
+                )
+                if timeToFirstByteMs == nil {
+                    timeToFirstByteMs = bodyPreview.timeToFirstByteMs
+                }
+                rawResponseBody = bodyPreview.body
+                latencyMs = Int(Date().timeIntervalSince(runStart) * 1_000)
+                notes.append("HTTP \(httpResponse.statusCode) from Mistral.")
+
+                if shouldRetry(statusCode: httpResponse.statusCode, attempt: attempt, maxAttempts: maxAttempts) {
+                    notes.append("Retrying after transient HTTP \(httpResponse.statusCode) (attempt \(attempt + 1)/\(maxAttempts)).")
+                    await sleepBeforeRetry(attempt: attempt)
+                    continue attemptLoop
+                }
+                break attemptLoop
+            }
+
+            var streamAccumulator = MistralStreamAccumulator()
+            var rawStreamLines: [String] = []
+            rawStreamLines.reserveCapacity(256)
+
+            for try await line in bytes.lines {
+                if timeToFirstByteMs == nil {
+                    timeToFirstByteMs = Int(Date().timeIntervalSince(attemptStart) * 1_000)
+                }
+                rawStreamLines.append(line)
+                try streamAccumulator.consume(line: line)
+            }
+            latencyMs = Int(Date().timeIntervalSince(runStart) * 1_000)
+            rawResponseBody = rawStreamLines.joined(separator: "\n")
+
+            do {
+                let streamResult = try streamAccumulator.finish()
+                streamCompleted = streamResult.receivedDone
+                usage = mapUsage(streamResult.usage)
+                hardGates.topLevelDecoded = true
+
+                let parseResult = try FoodAnalysisResponseParser.parseAssistantContent(streamResult.assistantContent)
+                hardGates.contentJSONParsed = true
+
+                if let contentData = streamResult.assistantContent.data(using: .utf8),
+                   let object = try? JSONSerialization.jsonObject(with: contentData) {
+                    hardGates.schemaConformant = validateSchema(object: object, allowedCategories: Set(FoodAnalysisCategories.all))
+                }
+                if hardGates.schemaConformant {
+                    actualPayload = parseResult.payload
+                }
+            } catch {
+                if let rawResponseBody,
+                   let fallbackData = rawResponseBody.data(using: .utf8),
+                   let fallbackParse = try? FoodAnalysisResponseParser.parseResponseData(fallbackData),
+                   let object = try? JSONSerialization.jsonObject(with: Data(fallbackParse.rawContent.utf8)) {
+                    hardGates.topLevelDecoded = true
+                    hardGates.contentJSONParsed = true
+                    hardGates.schemaConformant = validateSchema(object: object, allowedCategories: Set(FoodAnalysisCategories.all))
+                    if hardGates.schemaConformant {
+                        actualPayload = fallbackParse.payload
+                    }
+                    notes.append("Stream parser fallback parsed a non-stream JSON body.")
+                } else {
+                    throw error
+                }
+            }
+
+            break attemptLoop
+        } catch let urlError as URLError {
+            latencyMs = Int(Date().timeIntervalSince(runStart) * 1_000)
+            if shouldRetry(urlError: urlError, attempt: attempt, maxAttempts: maxAttempts) {
+                notes.append("Transient network failure (\(urlError.code.rawValue): \(urlError.code)); retrying attempt \(attempt + 1)/\(maxAttempts).")
+                await sleepBeforeRetry(attempt: attempt)
+                continue attemptLoop
+            }
+
             notes.append("Network call failed (\(urlError.code.rawValue): \(urlError.code)).")
             notes.append("Underlying: \(urlError.localizedDescription)")
             let nsError = urlError as NSError
@@ -497,77 +599,22 @@ private func runEval(
                 notes.append("Request timed out after \(Int(timeoutSeconds))s. Try a higher --timeout-seconds value (e.g. 240).")
             } else if urlError.code == .cancelled, let latencyMs, latencyMs >= 90_000 {
                 notes.append("Cancellation happened after ~\(latencyMs)ms, which often indicates an upstream timeout for long-running requests.")
-                notes.append("Try a faster model (e.g. --model mistral-small-latest) or simplify prompt/schema to confirm.")
+                notes.append("Try stream-friendly budgets: lower max_tokens, faster model (e.g. --model mistral-small-latest), or simplify prompt/schema.")
             }
-
-            if [.timedOut, .cancelled].contains(urlError.code) {
-                notes.append("Retrying once with curl transport for better diagnostics.")
-                do {
-                    let fallback = try performCurlFallbackRequest(
-                        requestBody: requestBody,
-                        apiKey: apiKey,
-                        timeoutSeconds: timeoutSeconds
-                    )
-                    if let existingLatency = latencyMs {
-                        latencyMs = existingLatency + fallback.latencyMs
-                    } else {
-                        latencyMs = fallback.latencyMs
-                    }
-                    receivedData = fallback.body
-                    receivedResponse = HTTPURLResponse(
-                        url: request.url!,
-                        statusCode: fallback.statusCode,
-                        httpVersion: nil,
-                        headerFields: nil
-                    )
-                    if let stderr = fallback.stderr, !stderr.isEmpty {
-                        notes.append("curl stderr: \(truncateForLog(stderr, maxChars: 300))")
-                    }
-                    notes.append("curl fallback completed (HTTP \(fallback.statusCode)).")
-                } catch {
-                    notes.append("curl fallback failed: \(error.localizedDescription)")
-                }
-            }
-        } else {
+            break attemptLoop
+        } catch let streamError as MistralStreamParserError {
+            latencyMs = Int(Date().timeIntervalSince(runStart) * 1_000)
+            notes.append("Failed to parse streaming response: \(streamError.localizedDescription)")
+            break attemptLoop
+        } catch {
+            latencyMs = Int(Date().timeIntervalSince(runStart) * 1_000)
             notes.append("Network call failed: \(error.localizedDescription)")
+            break attemptLoop
         }
     }
 
-    if let data = receivedData {
-        rawResponseBody = String(data: data, encoding: .utf8)
-
-        if let httpResponse = receivedResponse as? HTTPURLResponse {
-            httpStatus = httpResponse.statusCode
-            hardGates.http2xx = (200..<300).contains(httpResponse.statusCode)
-            if !hardGates.http2xx {
-                notes.append("HTTP \(httpResponse.statusCode) from Mistral.")
-                if let rawResponseBody {
-                    notes.append("Response preview: \(truncateForLog(rawResponseBody, maxChars: 500))")
-                }
-            }
-        } else {
-            notes.append("Non-HTTP response received.")
-        }
-
-        if let envelope = try? JSONDecoder().decode(MistralEnvelope.self, from: data) {
-            hardGates.topLevelDecoded = true
-            usage = envelope.usage
-
-            if let content = envelope.choices.first?.message.content,
-               let contentData = content.data(using: .utf8),
-               let object = try? JSONSerialization.jsonObject(with: contentData),
-               let payload = try? JSONDecoder().decode(FoodAnalysisPayload.self, from: contentData) {
-                hardGates.contentJSONParsed = true
-                hardGates.schemaConformant = validateSchema(object: object, allowedCategories: Set(FoodAnalysisCategories.all))
-                if hardGates.schemaConformant {
-                    actualPayload = payload
-                }
-            }
-        }
-
-        if hardGates.http2xx, actualPayload == nil {
-            notes.append("HTTP succeeded but payload could not be parsed and validated.")
-        }
+    if hardGates.http2xx, actualPayload == nil {
+        notes.append("HTTP succeeded but payload could not be parsed and validated.")
     }
 
     return buildResult(
@@ -576,6 +623,9 @@ private func runEval(
         model: model,
         apiKeySource: apiKeySource,
         latencyMs: latencyMs,
+        requestBodyBytes: requestBodyBytes,
+        timeToFirstByteMs: timeToFirstByteMs,
+        streamCompleted: streamCompleted,
         httpStatus: httpStatus,
         hardGates: hardGates,
         usage: usage,
@@ -591,6 +641,9 @@ private func buildResult(
     model: String,
     apiKeySource: APIKeySource,
     latencyMs: Int?,
+    requestBodyBytes: Int?,
+    timeToFirstByteMs: Int?,
+    streamCompleted: Bool?,
     httpStatus: Int?,
     hardGates: HardGates,
     usage: MistralUsage?,
@@ -610,6 +663,9 @@ private func buildResult(
         threshold: scoreResult.threshold,
         apiKeySource: apiKeySource,
         latencyMs: latencyMs,
+        requestBodyBytes: requestBodyBytes,
+        timeToFirstByteMs: timeToFirstByteMs,
+        streamCompleted: streamCompleted,
         httpStatus: httpStatus,
         hardGates: hardGates,
         componentScores: scoreResult.components,
@@ -619,6 +675,83 @@ private func buildResult(
         responseBody: rawResponseBody,
         notes: notes + scoreResult.notes
     )
+}
+
+private func mapUsage(_ usage: MistralStreamUsage?) -> MistralUsage? {
+    guard let usage else {
+        return nil
+    }
+
+    return MistralUsage(
+        promptTokens: usage.promptTokens,
+        completionTokens: usage.completionTokens,
+        totalTokens: usage.totalTokens
+    )
+}
+
+private func shouldRetry(statusCode: Int, attempt: Int, maxAttempts: Int) -> Bool {
+    guard attempt < maxAttempts else {
+        return false
+    }
+    return [408, 429, 500, 502, 503, 504].contains(statusCode)
+}
+
+private func shouldRetry(urlError: URLError, attempt: Int, maxAttempts: Int) -> Bool {
+    guard attempt < maxAttempts else {
+        return false
+    }
+    if Task.isCancelled {
+        return false
+    }
+
+    switch urlError.code {
+    case .timedOut, .networkConnectionLost, .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed, .resourceUnavailable, .cancelled:
+        return true
+    default:
+        return false
+    }
+}
+
+private func sleepBeforeRetry(attempt: Int) async {
+    let exponent = UInt64(max(0, attempt - 1))
+    let delayMs = UInt64(500) * (1 << exponent)
+    try? await Task.sleep(nanoseconds: delayMs * 1_000_000)
+}
+
+private func collectBodyPreview(
+    from bytes: URLSession.AsyncBytes,
+    maxChars: Int,
+    maxLines: Int,
+    startedAt: Date
+) async -> (body: String?, timeToFirstByteMs: Int?) {
+    var body = ""
+    var linesRead = 0
+    var firstByteMs: Int?
+
+    do {
+        for try await line in bytes.lines {
+            if firstByteMs == nil {
+                firstByteMs = Int(Date().timeIntervalSince(startedAt) * 1_000)
+            }
+            if !line.isEmpty {
+                body += line
+                body += "\n"
+            }
+            linesRead += 1
+            if body.count >= maxChars || linesRead >= maxLines {
+                break
+            }
+        }
+    } catch {
+        if body.isEmpty {
+            return (nil, firstByteMs)
+        }
+    }
+
+    guard !body.isEmpty else {
+        return (nil, firstByteMs)
+    }
+    return (String(body.prefix(maxChars)), firstByteMs)
 }
 
 private func score(evalCase: EvalCase, actualPayload: FoodAnalysisPayload?, hardGatesPassed: Bool) -> (status: String, score: Double?, threshold: Double?, components: ComponentScores, notes: [String]) {
@@ -829,6 +962,71 @@ private func validateSchema(object: Any, allowedCategories: Set<String>) -> Bool
     return true
 }
 
+private func preprocessImageForAnalysis(
+    _ sourceData: Data,
+    maxLongEdge: CGFloat = 1600,
+    compressionQuality: CGFloat = 0.75
+) -> Data {
+    guard let imageSource = CGImageSourceCreateWithData(sourceData as CFData, nil),
+          let sourceImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil) else {
+        return sourceData
+    }
+
+    let sourceWidth = CGFloat(sourceImage.width)
+    let sourceHeight = CGFloat(sourceImage.height)
+    let longEdge = max(sourceWidth, sourceHeight)
+
+    let targetImage: CGImage
+    if longEdge > maxLongEdge {
+        let scale = maxLongEdge / longEdge
+        let targetWidth = max(1, Int((sourceWidth * scale).rounded()))
+        let targetHeight = max(1, Int((sourceHeight * scale).rounded()))
+        let colorSpace = sourceImage.colorSpace
+            ?? CGColorSpace(name: CGColorSpace.sRGB)
+            ?? CGColorSpaceCreateDeviceRGB()
+        guard let context = CGContext(
+            data: nil,
+            width: targetWidth,
+            height: targetHeight,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            return sourceData
+        }
+        context.interpolationQuality = .high
+        context.draw(sourceImage, in: CGRect(x: 0, y: 0, width: CGFloat(targetWidth), height: CGFloat(targetHeight)))
+        guard let resizedImage = context.makeImage() else {
+            return sourceData
+        }
+        targetImage = resizedImage
+    } else {
+        targetImage = sourceImage
+    }
+
+    let encoded = NSMutableData()
+    guard let destination = CGImageDestinationCreateWithData(
+        encoded,
+        UTType.jpeg.identifier as CFString,
+        1,
+        nil
+    ) else {
+        return sourceData
+    }
+
+    let properties: [CFString: Any] = [
+        kCGImageDestinationLossyCompressionQuality: compressionQuality
+    ]
+    CGImageDestinationAddImage(destination, targetImage, properties as CFDictionary)
+    guard CGImageDestinationFinalize(destination) else {
+        return sourceData
+    }
+
+    let preparedData = encoded as Data
+    return preparedData.isEmpty ? sourceData : preparedData
+}
+
 private func writeResult(_ result: EvalRunResult, to fileURL: URL) throws {
     let directory = fileURL.deletingLastPathComponent()
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -842,98 +1040,6 @@ private func writeResult(_ result: EvalRunResult, to fileURL: URL) throws {
     } catch {
         throw CLIError.fileWriteFailed
     }
-}
-
-private struct CurlFallbackResult {
-    let statusCode: Int
-    let body: Data
-    let stderr: String?
-    let latencyMs: Int
-}
-
-private enum CurlFallbackError: LocalizedError {
-    case launchFailed(String)
-    case nonZeroExit(Int32, String)
-    case invalidOutput(String)
-    case invalidStatusCode(String)
-
-    var errorDescription: String? {
-        switch self {
-        case .launchFailed(let message):
-            return "curl launch failed: \(message)"
-        case .nonZeroExit(let code, let stderr):
-            return "curl exited with code \(code): \(stderr)"
-        case .invalidOutput(let message):
-            return "curl output parse failed: \(message)"
-        case .invalidStatusCode(let value):
-            return "curl returned invalid HTTP status: \(value)"
-        }
-    }
-}
-
-private func performCurlFallbackRequest(
-    requestBody: Data,
-    apiKey: String,
-    timeoutSeconds: TimeInterval
-) throws -> CurlFallbackResult {
-    let marker = "__HTTP_STATUS__:"
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/usr/bin/curl")
-    process.arguments = [
-        "-sS",
-        "--connect-timeout", String(Int(ceil(timeoutSeconds))),
-        "--max-time", String(Int(ceil(timeoutSeconds))),
-        "https://api.mistral.ai/v1/chat/completions",
-        "-H", "Authorization: Bearer \(apiKey)",
-        "-H", "Content-Type: application/json",
-        "--data-binary", "@-",
-        "-w", "\n\(marker)%{http_code}\n"
-    ]
-
-    let stdinPipe = Pipe()
-    let stdoutPipe = Pipe()
-    let stderrPipe = Pipe()
-    process.standardInput = stdinPipe
-    process.standardOutput = stdoutPipe
-    process.standardError = stderrPipe
-
-    let start = Date()
-    do {
-        try process.run()
-    } catch {
-        throw CurlFallbackError.launchFailed(error.localizedDescription)
-    }
-
-    stdinPipe.fileHandleForWriting.write(requestBody)
-    try? stdinPipe.fileHandleForWriting.close()
-    process.waitUntilExit()
-    let latencyMs = Int(Date().timeIntervalSince(start) * 1_000)
-
-    let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-    let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-    let stderrText = String(data: stderrData, encoding: .utf8) ?? ""
-
-    guard process.terminationStatus == 0 else {
-        throw CurlFallbackError.nonZeroExit(process.terminationStatus, stderrText)
-    }
-
-    guard let stdoutText = String(data: stdoutData, encoding: .utf8),
-          let markerRange = stdoutText.range(of: marker, options: .backwards) else {
-        throw CurlFallbackError.invalidOutput("missing HTTP status marker")
-    }
-
-    let bodyText = String(stdoutText[..<markerRange.lowerBound]).trimmingCharacters(in: .newlines)
-    let statusText = String(stdoutText[markerRange.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
-    guard let statusCode = Int(statusText) else {
-        throw CurlFallbackError.invalidStatusCode(statusText)
-    }
-
-    return CurlFallbackResult(
-        statusCode: statusCode,
-        body: Data(bodyText.utf8),
-        stderr: stderrText.isEmpty ? nil : stderrText,
-        latencyMs: latencyMs
-    )
 }
 
 private func truncateForLog(_ value: String, maxChars: Int) -> String {
@@ -954,6 +1060,15 @@ private func printSummary(result: EvalRunResult, outputURL: URL) {
     print("Hard gates: http2xx=\(result.hardGates.http2xx) topLevelDecoded=\(result.hardGates.topLevelDecoded) contentJSONParsed=\(result.hardGates.contentJSONParsed) schemaConformant=\(result.hardGates.schemaConformant)")
     if let latencyMs = result.latencyMs {
         print("Latency: \(latencyMs) ms")
+    }
+    if let requestBodyBytes = result.requestBodyBytes {
+        print("Request body: \(requestBodyBytes) bytes")
+    }
+    if let timeToFirstByteMs = result.timeToFirstByteMs {
+        print("Time to first byte: \(timeToFirstByteMs) ms")
+    }
+    if let streamCompleted = result.streamCompleted {
+        print("Stream completed: \(streamCompleted)")
     }
     if let httpStatus = result.httpStatus {
         print("HTTP: \(httpStatus)")

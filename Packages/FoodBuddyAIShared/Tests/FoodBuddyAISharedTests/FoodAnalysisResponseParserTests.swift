@@ -30,4 +30,13 @@ final class FoodAnalysisResponseParserTests: XCTestCase {
             }
         }
     }
+
+    func testParseAssistantContentParsesPayload() throws {
+        let result = try FoodAnalysisResponseParser.parseAssistantContent(
+            #"{"description":"Toast and eggs","food_items":[]}"#
+        )
+
+        XCTAssertEqual(result.payload.description, "Toast and eggs")
+        XCTAssertEqual(result.payload.foodItems, [])
+    }
 }

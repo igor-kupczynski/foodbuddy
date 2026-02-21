@@ -5,6 +5,12 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
     private enum Constants {
         static let endpoint = URL(string: "https://api.mistral.ai/v1/chat/completions")
         static let model = "mistral-large-latest"
+        static let timeoutSeconds: TimeInterval = 240
+        static let responseMaxTokens = 400
+        static let maxAttempts = 3
+        static let retryBaseDelayMs: UInt64 = 500
+        static let errorPreviewMaxChars = 2_000
+        static let errorPreviewMaxLines = 8
     }
 
     private let apiKeyStore: any MistralAPIKeyStoring
@@ -32,46 +38,89 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        request.timeoutInterval = Constants.timeoutSeconds
 
         do {
             request.httpBody = try FoodAnalysisRequestFactory.makeJSONData(
                 model: Constants.model,
                 images: images,
                 notes: notes,
-                categoryIdentifiers: FoodAnalysisCategories.all
+                categoryIdentifiers: FoodAnalysisCategories.all,
+                stream: true,
+                maxTokens: Constants.responseMaxTokens
             )
         } catch {
             throw FoodRecognitionServiceError.decodingError
         }
 
-        let data: Data
-        let response: URLResponse
-        do {
-            (data, response) = try await urlSession.data(for: request)
-        } catch {
-            throw FoodRecognitionServiceError.networkError
+        for attempt in 1...Constants.maxAttempts {
+            do {
+                let (bytes, response) = try await urlSession.bytes(for: request)
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    throw FoodRecognitionServiceError.networkError
+                }
+
+                guard (200..<300).contains(httpResponse.statusCode) else {
+                    let bodyPreview = await collectBodyPreview(from: bytes)
+                    let error = FoodRecognitionServiceError.httpError(
+                        statusCode: httpResponse.statusCode,
+                        responseBody: bodyPreview
+                    )
+
+                    if shouldRetry(error: error, attempt: attempt) {
+                        await sleepBeforeRetry(attempt: attempt)
+                        continue
+                    }
+                    throw error
+                }
+
+                var rawLines: [String] = []
+                rawLines.reserveCapacity(128)
+
+                var streamAccumulator = MistralStreamAccumulator()
+                for try await line in bytes.lines {
+                    rawLines.append(line)
+                    try streamAccumulator.consume(line: line)
+                }
+
+                do {
+                    let streamResult = try streamAccumulator.finish()
+                    let parseResult = try FoodAnalysisResponseParser.parseAssistantContent(streamResult.assistantContent)
+                    return FoodAnalysisResult(
+                        description: parseResult.payload.description,
+                        foodItems: normalizeFoodItems(parseResult.payload.foodItems)
+                    )
+                } catch {
+                    let fallbackBody = rawLines.joined(separator: "\n")
+                    if let fallbackData = fallbackBody.data(using: .utf8),
+                       let fallbackParse = try? FoodAnalysisResponseParser.parseResponseData(fallbackData) {
+                        return FoodAnalysisResult(
+                            description: fallbackParse.payload.description,
+                            foodItems: normalizeFoodItems(fallbackParse.payload.foodItems)
+                        )
+                    }
+
+                    throw FoodRecognitionServiceError.decodingError
+                }
+            } catch let error as FoodRecognitionServiceError {
+                if shouldRetry(error: error, attempt: attempt) {
+                    await sleepBeforeRetry(attempt: attempt)
+                    continue
+                }
+                throw error
+            } catch let urlError as URLError {
+                if shouldRetry(urlError: urlError, attempt: attempt) {
+                    await sleepBeforeRetry(attempt: attempt)
+                    continue
+                }
+                throw FoodRecognitionServiceError.networkError
+            } catch {
+                throw FoodRecognitionServiceError.networkError
+            }
         }
 
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw FoodRecognitionServiceError.networkError
-        }
-
-        guard (200..<300).contains(httpResponse.statusCode) else {
-            let body = String(data: data.prefix(2000), encoding: .utf8)
-            throw FoodRecognitionServiceError.httpError(statusCode: httpResponse.statusCode, responseBody: body)
-        }
-
-        let parseResult: FoodAnalysisResponseParseResult
-        do {
-            parseResult = try FoodAnalysisResponseParser.parseResponseData(data)
-        } catch {
-            throw FoodRecognitionServiceError.decodingError
-        }
-
-        return FoodAnalysisResult(
-            description: parseResult.payload.description,
-            foodItems: normalizeFoodItems(parseResult.payload.foodItems)
-        )
+        throw FoodRecognitionServiceError.networkError
     }
 
     func describe(images: [Data], notes: String?) async throws -> String {
@@ -113,5 +162,68 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
         }
 
         return normalized
+    }
+
+    private func shouldRetry(error: FoodRecognitionServiceError, attempt: Int) -> Bool {
+        guard attempt < Constants.maxAttempts else {
+            return false
+        }
+
+        switch error {
+        case .httpError(let statusCode, _):
+            return [408, 429, 500, 502, 503, 504].contains(statusCode)
+        default:
+            return false
+        }
+    }
+
+    private func shouldRetry(urlError: URLError, attempt: Int) -> Bool {
+        guard attempt < Constants.maxAttempts else {
+            return false
+        }
+
+        if Task.isCancelled {
+            return false
+        }
+
+        switch urlError.code {
+        case .timedOut, .networkConnectionLost, .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed, .resourceUnavailable, .cancelled:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func sleepBeforeRetry(attempt: Int) async {
+        let exponent = UInt64(max(0, attempt - 1))
+        let delayMs = Constants.retryBaseDelayMs * (1 << exponent)
+        try? await Task.sleep(nanoseconds: delayMs * 1_000_000)
+    }
+
+    private func collectBodyPreview(from bytes: URLSession.AsyncBytes) async -> String? {
+        var body = ""
+        var linesRead = 0
+
+        do {
+            for try await line in bytes.lines {
+                if !line.isEmpty {
+                    body += line
+                    body += "\n"
+                }
+                linesRead += 1
+                if body.count >= Constants.errorPreviewMaxChars || linesRead >= Constants.errorPreviewMaxLines {
+                    break
+                }
+            }
+        } catch {
+            if body.isEmpty {
+                return nil
+            }
+        }
+
+        guard !body.isEmpty else {
+            return nil
+        }
+        return String(body.prefix(Constants.errorPreviewMaxChars))
     }
 }

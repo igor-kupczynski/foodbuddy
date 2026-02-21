@@ -1,0 +1,18 @@
+{
+  "id": "case-002-note-only-single-note",
+  "model": "mistral-large-latest",
+  "notes": "Quick lunch: Greek yogurt with banana and chia seeds.",
+  "images": [],
+  "expected": {
+    "pass_threshold": 80,
+    "description": {
+      "min_sentences": 1,
+      "max_sentences": 3,
+      "must_contain": [
+        "yogurt",
+        "banana"
+      ]
+    },
+    "food_items": null
+  }
+}

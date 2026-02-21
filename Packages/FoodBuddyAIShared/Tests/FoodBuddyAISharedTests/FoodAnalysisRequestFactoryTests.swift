@@ -64,4 +64,21 @@ final class FoodAnalysisRequestFactoryTests: XCTestCase {
             XCTAssertEqual(error as? FoodBuddyAISharedError, .emptyInput)
         }
     }
+
+    func testMakeJSONDataSupportsStreamingAndMaxTokens() throws {
+        let data = try FoodAnalysisRequestFactory.makeJSONData(
+            model: "mistral-large-latest",
+            images: [Data("first".utf8)],
+            notes: nil,
+            categoryIdentifiers: ["fruits"],
+            stream: true,
+            maxTokens: 512
+        )
+
+        let bodyObject = try XCTUnwrap(
+            try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        )
+        XCTAssertEqual(bodyObject["stream"] as? Bool, true)
+        XCTAssertEqual(bodyObject["max_tokens"] as? Int, 512)
+    }
 }

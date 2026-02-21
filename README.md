@@ -14,7 +14,7 @@ FoodBuddy is currently focused on:
 - SwiftData persistence with CloudKit private-database sync behavior and local fallback.
 - iPhone and iPad adaptive UI, with automated unit/UI regression coverage.
 
-Major work items are tracked in `docs/NNN-plan-*.md` (latest completed: `docs/013-plan-ai-evals-sidecar-swiftpm.md`).
+Major work items are tracked in `docs/NNN-plan-*.md` (active: `docs/015-plan-mistral-long-running-request-reliability.md`).
 
 ## Diet Quality Score Attribution
 
@@ -65,7 +65,9 @@ make build-ios
 make build-ios-dev
 make ai-shared-test
 make eval-build
-make eval-run CASE=case-001
+make eval-run
+make eval-case-001
+make eval-case-002
 ```
 
 ### Selective Verification Matrix
@@ -75,7 +77,7 @@ Run only what matches your changed scope:
 - App source / `project.yml`: `make xcodegen`, `make launch-screen-guard`, `make test-core`
 - App build/signing/capability changes: `make build-ios` (and `make build-ios-dev` when relevant)
 - Shared AI package (`Packages/FoodBuddyAIShared`): `make ai-shared-test` and `make test-core`
-- Evals sidecar only (`evals/`): `make eval-build` (plus `make eval-run CASE=...` for live checks)
+- Evals sidecar only (`evals/`): `make eval-build` (plus `make eval-run` / `make eval-run-case CASE=...` for live checks)
 - UI flow changes: run targeted `FoodBuddyUITests` suites via `xcodebuild test ... -only-testing:...`
 
 If `xcbeautify` is installed, pipe the `xcodebuild` commands to it for cleaner output.
@@ -98,26 +100,33 @@ API key precedence:
 - `MISTRAL_API_KEY` environment variable
 - `evals/.env`
 
-2. Put case fixtures here:
+2. Put image fixtures for `case-001` here:
 - `evals/cases/case-001/images/01.jpg`
 - `evals/cases/case-001/images/02.jpg`
 
-3. (Optional but recommended) set expectations in `evals/cases/case-001/case.json`:
+`case-002` is note-only and requires no image files.
+
+3. (Optional but recommended) set expectations in `evals/cases/<case-id>/case.json`:
 - `expected.description` constraints
 - `expected.food_items` expected names/categories/servings
 
 ### Run
 
 ```bash
+make eval-run
+# or targeted
 make eval-case-001
+make eval-case-002
 # or
-make eval-run CASE=case-001
+make eval-run-case CASE=case-001
+make eval-run-case CASE=case-002
 # or (more control)
 cd evals && swift run FoodBuddyAIEvals --case case-001 --timeout-seconds 240
 ```
 
 The run writes a JSON artifact to `evals/results/`.
-If the primary URLSession request times out/cancels, the runner retries once via `curl` to surface clearer HTTP diagnostics in the artifact/console.
+The runner uses URLSession only (no curl fallback), streams chat-completions responses, and retries transient upstream failures (HTTP `408/429/5xx` and retryable transport errors).
+`make eval-run` executes every case under `evals/cases/` and reports aggregate failure count at the end.
 
 ## Run on iOS Simulator
 

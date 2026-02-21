@@ -29,10 +29,13 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
         let request = try XCTUnwrap(capturedRequest)
         XCTAssertEqual(request.url?.absoluteString, "https://api.mistral.ai/v1/chat/completions")
         XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer test-key")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "text/event-stream")
 
         let bodyData = try XCTUnwrap(extractBodyData(from: request))
         let bodyObject = try XCTUnwrap(try JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
         XCTAssertEqual(bodyObject["model"] as? String, "mistral-large-latest")
+        XCTAssertEqual(bodyObject["stream"] as? Bool, true)
+        XCTAssertEqual(bodyObject["max_tokens"] as? Int, 400)
 
         let messages = try XCTUnwrap(bodyObject["messages"] as? [[String: Any]])
         XCTAssertEqual(messages.count, 2)
@@ -102,6 +105,35 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
         XCTAssertEqual(result.foodItems.count, 2)
         XCTAssertEqual(result.foodItems[0].categories, ["lean_meats_and_fish"])
         XCTAssertEqual(result.foodItems[1].categories, ["dairy", "sweets"])
+    }
+
+    func testAnalyzeParsesStreamingSSEPayload() async throws {
+        let session = makeMockedSession()
+        let service = MistralFoodRecognitionService(
+            apiKeyStore: StaticAPIKeyStore(key: "test-key"),
+            urlSession: session
+        )
+
+        URLProtocolStub.requestHandler = { request in
+            let content = #"{"description":"Grilled salmon with rice","food_items":[{"name":"Salmon","categories":["lean_meats_and_fish"],"servings":1.0}]}"#
+            let escapedContent = content
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "\"", with: "\\\"")
+            let chunk = #"{"choices":[{"delta":{"content":"\#(escapedContent)"}}]}"#
+            let body = [
+                "data: \(chunk)",
+                "",
+                "data: [DONE]",
+                ""
+            ].joined(separator: "\n")
+            return try self.makeHTTPResponse(statusCode: 200, request: request, body: body)
+        }
+
+        let result = try await service.analyze(images: [Data("image".utf8)], notes: nil)
+        XCTAssertEqual(result.description, "Grilled salmon with rice")
+        XCTAssertEqual(result.foodItems.count, 1)
+        XCTAssertEqual(result.foodItems[0].name, "Salmon")
+        XCTAssertEqual(result.foodItems[0].categories, ["lean_meats_and_fish"])
     }
 
     func testAnalyzeHandlesEmptyFoodItems() async throws {
@@ -189,6 +221,30 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
     func testAnalyzeHTTPErrorMapping() async throws {
         try await assertHTTPError(statusCode: 401)
         try await assertHTTPError(statusCode: 500)
+    }
+
+    func testAnalyzeRetriesTransientHTTPAndThenSucceeds() async throws {
+        let session = makeMockedSession()
+        let service = MistralFoodRecognitionService(
+            apiKeyStore: StaticAPIKeyStore(key: "test-key"),
+            urlSession: session
+        )
+
+        var attemptCount = 0
+        URLProtocolStub.requestHandler = { request in
+            attemptCount += 1
+            if attemptCount == 1 {
+                return try self.makeHTTPResponse(statusCode: 502, request: request, body: #"{"error":"temporary"}"#)
+            }
+
+            let body = #"{"choices":[{"message":{"content":"{\"description\":\"Retry recovered\",\"food_items\":[]}"}}]}"#
+            return try self.makeHTTPResponse(statusCode: 200, request: request, body: body)
+        }
+
+        let result = try await service.analyze(images: [Data("image".utf8)], notes: nil)
+        XCTAssertEqual(result.description, "Retry recovered")
+        XCTAssertEqual(result.foodItems.count, 0)
+        XCTAssertEqual(attemptCount, 2)
     }
 
     func testAnalyzeWithoutAPIKeyThrowsNoAPIKey() async {

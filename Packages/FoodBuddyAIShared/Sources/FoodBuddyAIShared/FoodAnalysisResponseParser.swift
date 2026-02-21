@@ -20,7 +20,15 @@ public enum FoodAnalysisResponseParser {
         }
 
         guard let content = response.choices.first?.message.content,
-              let contentData = content.data(using: .utf8) else {
+              !content.isEmpty else {
+            throw FoodBuddyAISharedError.decodingError
+        }
+
+        return try parseAssistantContent(content)
+    }
+
+    public static func parseAssistantContent(_ content: String) throws -> FoodAnalysisResponseParseResult {
+        guard let contentData = content.data(using: .utf8) else {
             throw FoodBuddyAISharedError.decodingError
         }
 
