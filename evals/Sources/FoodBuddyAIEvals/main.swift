@@ -1,7 +1,10 @@
+import AsyncHTTPClient
 import FoodBuddyAIShared
 import CoreGraphics
 import Foundation
 import ImageIO
+import NIOCore
+import NIOFoundationCompat
 import UniformTypeIdentifiers
 
 @main
@@ -459,15 +462,9 @@ private func runEval(
         )
     }
 
-    var request = URLRequest(url: URL(string: "https://api.mistral.ai/v1/chat/completions")!)
-    request.httpMethod = "POST"
-    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-    request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
-    request.timeoutInterval = timeoutSeconds
-
+    let requestBodyData: Data
     do {
-        let requestBody = try FoodAnalysisRequestFactory.makeJSONData(
+        requestBodyData = try FoodAnalysisRequestFactory.makeJSONData(
             model: model,
             images: imageData,
             notes: evalCase.notes,
@@ -475,8 +472,7 @@ private func runEval(
             stream: true,
             maxTokens: 400
         )
-        request.httpBody = requestBody
-        requestBodyBytes = requestBody.count
+        requestBodyBytes = requestBodyData.count
     } catch {
         notes.append("Failed to encode request payload: \(error)")
         return buildResult(
@@ -497,36 +493,54 @@ private func runEval(
         )
     }
 
+    // Use AsyncHTTPClient (SwiftNIO) instead of URLSession to force HTTP/2.
+    // URLSession may negotiate HTTP/3 (QUIC) with Cloudflare and fail with 502.
+    // AsyncHTTPClient only advertises h2/http1.1 via ALPN, avoiding this issue.
+    let httpClient = HTTPClient(eventLoopGroupProvider: .singleton)
+
+    var ahcRequest = HTTPClientRequest(url: "https://api.mistral.ai/v1/chat/completions")
+    ahcRequest.method = .POST
+    ahcRequest.headers.add(name: "Content-Type", value: "application/json")
+    ahcRequest.headers.add(name: "Authorization", value: "Bearer \(apiKey)")
+    ahcRequest.headers.add(name: "Accept", value: "text/event-stream")
+    ahcRequest.body = .bytes(ByteBuffer(data: requestBodyData))
+
     let runStart = Date()
     let maxAttempts = 3
     attemptLoop: for attempt in 1...maxAttempts {
         let attemptStart = Date()
         do {
-            let (bytes, response) = try await URLSession.shared.bytes(for: request)
-            guard let httpResponse = response as? HTTPURLResponse else {
-                notes.append("Non-HTTP response received.")
-                break attemptLoop
-            }
+            let response = try await httpClient.execute(ahcRequest, timeout: .seconds(Int64(timeoutSeconds)))
+            let statusCode = Int(response.status.code)
 
-            httpStatus = httpResponse.statusCode
-            hardGates.http2xx = (200..<300).contains(httpResponse.statusCode)
+            httpStatus = statusCode
+            hardGates.http2xx = (200..<300).contains(statusCode)
 
             if !hardGates.http2xx {
-                let bodyPreview = await collectBodyPreview(
-                    from: bytes,
-                    maxChars: 2_000,
-                    maxLines: 8,
-                    startedAt: attemptStart
-                )
-                if timeToFirstByteMs == nil {
-                    timeToFirstByteMs = bodyPreview.timeToFirstByteMs
+                // Collect bounded error body preview
+                var errorBody = ""
+                var linesRead = 0
+                var lineBuffer = ByteBuffer()
+                for try await chunk in response.body {
+                    lineBuffer.writeImmutableBuffer(chunk)
+                    while let line = lineBuffer.readLine() {
+                        if timeToFirstByteMs == nil {
+                            timeToFirstByteMs = Int(Date().timeIntervalSince(attemptStart) * 1_000)
+                        }
+                        if !line.isEmpty {
+                            errorBody += line + "\n"
+                        }
+                        linesRead += 1
+                        if errorBody.count >= 2_000 || linesRead >= 8 { break }
+                    }
+                    if errorBody.count >= 2_000 || linesRead >= 8 { break }
                 }
-                rawResponseBody = bodyPreview.body
+                rawResponseBody = errorBody.isEmpty ? nil : errorBody
                 latencyMs = Int(Date().timeIntervalSince(runStart) * 1_000)
-                notes.append("HTTP \(httpResponse.statusCode) from Mistral.")
+                notes.append("HTTP \(statusCode) from Mistral.")
 
-                if shouldRetry(statusCode: httpResponse.statusCode, attempt: attempt, maxAttempts: maxAttempts) {
-                    notes.append("Retrying after transient HTTP \(httpResponse.statusCode) (attempt \(attempt + 1)/\(maxAttempts)).")
+                if shouldRetry(statusCode: statusCode, attempt: attempt, maxAttempts: maxAttempts) {
+                    notes.append("Retrying after transient HTTP \(statusCode) (attempt \(attempt + 1)/\(maxAttempts)).")
                     await sleepBeforeRetry(attempt: attempt)
                     continue attemptLoop
                 }
@@ -537,12 +551,16 @@ private func runEval(
             var rawStreamLines: [String] = []
             rawStreamLines.reserveCapacity(256)
 
-            for try await line in bytes.lines {
-                if timeToFirstByteMs == nil {
-                    timeToFirstByteMs = Int(Date().timeIntervalSince(attemptStart) * 1_000)
+            var lineBuffer = ByteBuffer()
+            for try await chunk in response.body {
+                lineBuffer.writeImmutableBuffer(chunk)
+                while let line = lineBuffer.readLine() {
+                    if timeToFirstByteMs == nil {
+                        timeToFirstByteMs = Int(Date().timeIntervalSince(attemptStart) * 1_000)
+                    }
+                    rawStreamLines.append(line)
+                    try streamAccumulator.consume(line: line)
                 }
-                rawStreamLines.append(line)
-                try streamAccumulator.consume(line: line)
             }
             latencyMs = Int(Date().timeIntervalSince(runStart) * 1_000)
             rawResponseBody = rawStreamLines.joined(separator: "\n")
@@ -581,37 +599,32 @@ private func runEval(
             }
 
             break attemptLoop
-        } catch let urlError as URLError {
-            latencyMs = Int(Date().timeIntervalSince(runStart) * 1_000)
-            if shouldRetry(urlError: urlError, attempt: attempt, maxAttempts: maxAttempts) {
-                notes.append("Transient network failure (\(urlError.code.rawValue): \(urlError.code)); retrying attempt \(attempt + 1)/\(maxAttempts).")
-                await sleepBeforeRetry(attempt: attempt)
-                continue attemptLoop
-            }
-
-            notes.append("Network call failed (\(urlError.code.rawValue): \(urlError.code)).")
-            notes.append("Underlying: \(urlError.localizedDescription)")
-            let nsError = urlError as NSError
-            if let failingURL = nsError.userInfo[NSURLErrorFailingURLStringErrorKey] as? String {
-                notes.append("Failing URL: \(failingURL)")
-            }
-            if urlError.code == .timedOut {
-                notes.append("Request timed out after \(Int(timeoutSeconds))s. Try a higher --timeout-seconds value (e.g. 240).")
-            } else if urlError.code == .cancelled, let latencyMs, latencyMs >= 90_000 {
-                notes.append("Cancellation happened after ~\(latencyMs)ms, which often indicates an upstream timeout for long-running requests.")
-                notes.append("Try stream-friendly budgets: lower max_tokens, faster model (e.g. --model mistral-small-latest), or simplify prompt/schema.")
-            }
-            break attemptLoop
         } catch let streamError as MistralStreamParserError {
             latencyMs = Int(Date().timeIntervalSince(runStart) * 1_000)
             notes.append("Failed to parse streaming response: \(streamError.localizedDescription)")
             break attemptLoop
         } catch {
             latencyMs = Int(Date().timeIntervalSince(runStart) * 1_000)
-            notes.append("Network call failed: \(error.localizedDescription)")
+            let errorDesc = String(describing: error)
+            let isTimeout = errorDesc.contains("deadlineExceeded") || errorDesc.contains("readTimeout") || errorDesc.contains("connectTimeout")
+            let isConnectionClosed = errorDesc.contains("remoteConnectionClosed")
+            let isRetryable = isTimeout || isConnectionClosed
+
+            if isRetryable, attempt < maxAttempts {
+                notes.append("Transient network failure (\(errorDesc)); retrying attempt \(attempt + 1)/\(maxAttempts).")
+                await sleepBeforeRetry(attempt: attempt)
+                continue attemptLoop
+            }
+
+            notes.append("Network call failed: \(errorDesc)")
+            if isTimeout {
+                notes.append("Request timed out after \(Int(timeoutSeconds))s. Try a higher --timeout-seconds value (e.g. 240).")
+            }
             break attemptLoop
         }
     }
+
+    try? await httpClient.shutdown()
 
     if hardGates.http2xx, actualPayload == nil {
         notes.append("HTTP succeeded but payload could not be parsed and validated.")
@@ -696,62 +709,31 @@ private func shouldRetry(statusCode: Int, attempt: Int, maxAttempts: Int) -> Boo
     return [408, 429, 500, 502, 503, 504].contains(statusCode)
 }
 
-private func shouldRetry(urlError: URLError, attempt: Int, maxAttempts: Int) -> Bool {
-    guard attempt < maxAttempts else {
-        return false
-    }
-    if Task.isCancelled {
-        return false
-    }
-
-    switch urlError.code {
-    case .timedOut, .networkConnectionLost, .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed, .resourceUnavailable, .cancelled:
-        return true
-    default:
-        return false
-    }
-}
-
 private func sleepBeforeRetry(attempt: Int) async {
     let exponent = UInt64(max(0, attempt - 1))
     let delayMs = UInt64(500) * (1 << exponent)
     try? await Task.sleep(nanoseconds: delayMs * 1_000_000)
 }
 
-private func collectBodyPreview(
-    from bytes: URLSession.AsyncBytes,
-    maxChars: Int,
-    maxLines: Int,
-    startedAt: Date
-) async -> (body: String?, timeToFirstByteMs: Int?) {
-    var body = ""
-    var linesRead = 0
-    var firstByteMs: Int?
+// MARK: - ByteBuffer line reading
 
-    do {
-        for try await line in bytes.lines {
-            if firstByteMs == nil {
-                firstByteMs = Int(Date().timeIntervalSince(startedAt) * 1_000)
-            }
-            if !line.isEmpty {
-                body += line
-                body += "\n"
-            }
-            linesRead += 1
-            if body.count >= maxChars || linesRead >= maxLines {
-                break
-            }
+extension ByteBuffer {
+    /// Read a complete line (up to and including `\n`) from the buffer.
+    /// Returns the line content without the trailing `\r\n` or `\n`, or nil if no complete line is available.
+    mutating func readLine() -> String? {
+        guard let newlineIndex = self.readableBytesView.firstIndex(of: UInt8(ascii: "\n")) else {
+            return nil
         }
-    } catch {
-        if body.isEmpty {
-            return (nil, firstByteMs)
+        let lineLength = newlineIndex - self.readableBytesView.startIndex + 1
+        guard let slice = self.readSlice(length: lineLength) else {
+            return nil
         }
+        var line = String(buffer: slice)
+        while line.last == "\n" || line.last == "\r" {
+            line.removeLast()
+        }
+        return line
     }
-
-    guard !body.isEmpty else {
-        return (nil, firstByteMs)
-    }
-    return (String(body.prefix(maxChars)), firstByteMs)
 }
 
 private func score(evalCase: EvalCase, actualPayload: FoodAnalysisPayload?, hardGatesPassed: Bool) -> (status: String, score: Double?, threshold: Double?, components: ComponentScores, notes: [String]) {

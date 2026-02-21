@@ -11,6 +11,12 @@ settings:
 packages:
   FoodBuddyAIShared:
     path: Packages/FoodBuddyAIShared
+  async-http-client:
+    url: https://github.com/swift-server/async-http-client.git
+    from: "1.9.0"
+  swift-nio:
+    url: https://github.com/apple/swift-nio.git
+    from: "2.65.0"
 
 targets:
   FoodBuddy:
@@ -41,6 +47,12 @@ targets:
     dependencies:
       - package: FoodBuddyAIShared
         product: FoodBuddyAIShared
+      - package: async-http-client
+        product: AsyncHTTPClient
+      - package: swift-nio
+        product: NIOCore
+      - package: swift-nio
+        product: NIOFoundationCompat
 
   FoodBuddyDev:
     type: application
@@ -70,6 +82,12 @@ targets:
     dependencies:
       - package: FoodBuddyAIShared
         product: FoodBuddyAIShared
+      - package: async-http-client
+        product: AsyncHTTPClient
+      - package: swift-nio
+        product: NIOCore
+      - package: swift-nio
+        product: NIOFoundationCompat
 
   FoodBuddyCoreTests:
     type: bundle.unit-test
@@ -92,6 +110,12 @@ targets:
     dependencies:
       - package: FoodBuddyAIShared
         product: FoodBuddyAIShared
+      - package: async-http-client
+        product: AsyncHTTPClient
+      - package: swift-nio
+        product: NIOCore
+      - package: swift-nio
+        product: NIOFoundationCompat
 
   FoodBuddyUITests:
     type: bundle.ui-testing
