@@ -37,8 +37,8 @@
       "name": "mistral",
       "repo": "https://github.com/igor-kupczynski/skills",
       "path": "skills/mistral",
-      "commit": "b48c7672a16365f55dd15b6f06cb492c864d1b21",
-      "checksum": "4a96e43959620bab64d43a0a94461fe8ce24bd96d0358d9227b079ddcac7d1b3",
+      "commit": "869ede9daf87f6d2e55394d5e04ec111b5f3b915",
+      "checksum": "6d21d34192d4c053ee83de3c891744bba7fe5747f84e7bb20e87096f96798704",
       "license": {
         "spdx": "MIT",
         "path": "LICENSE"

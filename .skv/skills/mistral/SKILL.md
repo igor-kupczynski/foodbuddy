@@ -202,6 +202,17 @@ Use specific version IDs (e.g. `mistral-large-2512`) in production for stability
 
 Set `stream: true`. Responses arrive as Server-Sent Events. Stream ends with `data: [DONE]`.
 
+### When to Use Streaming
+
+| Scenario | Mode | Why |
+|----------|------|-----|
+| Interactive / user-facing | `stream: true` | Immediate first-token delivery |
+| Long context, vision, or high `max_tokens` | `stream: true` | Avoids gateway timeout (see below) |
+| Short programmatic calls (<30s expected) | `stream: false` | Simpler code, single response object |
+| Large-volume offline processing | Batch API | Async, no rate-limit pressure |
+
+> **Warning**: Non-streaming requests that take longer than ~90-120 seconds are silently terminated by upstream gateway timeouts (connection reset, not an HTTP error). **Always use streaming for requests with large contexts, vision inputs, complex prompts, or high `max_tokens` values.** If streaming is not an option, reduce `max_tokens` or try a faster model (e.g. `mistral-small-latest`) to stay within the timeout window.
+
 ### Python
 
 ```python
@@ -227,6 +238,8 @@ for await (const chunk of stream) {
   if (content) process.stdout.write(content);
 }
 ```
+
+> For raw SSE handling without the SDK, timeout troubleshooting, and other operational patterns, see [OPERATIONAL.md](OPERATIONAL.md).
 
 ---
 
@@ -386,6 +399,11 @@ book = response.choices[0].message.parsed  # typed Book instance
 
 TypeScript equivalent uses Zod schemas with `client.chat.parse(...)`.
 
+### Structured Output Tips
+
+- **Set `max_tokens` generously** when using `json_schema` mode. Output that hits the token limit produces truncated, unparseable JSON. Estimate your schema's max serialized size and add margin.
+- **For multimodal + structured output**, use `temperature: 0` for deterministic results. Vision inputs increase output variance.
+
 ---
 
 ## Vision (Multimodal)
@@ -404,6 +422,8 @@ response = client.chat.complete(
 ```
 
 Base64 images: `{"type": "image_url", "image_url": "data:image/jpeg;base64,..."}`.
+
+> For image sizing recommendations, URL vs base64 tradeoffs, and latency optimization, see [OPERATIONAL.md](OPERATIONAL.md).
 
 ---
 
@@ -545,7 +565,7 @@ Fine-tunable models: `mistral-small-latest`, `mistral-large-latest`, `codestral-
 
 ## Batch API
 
-For large-volume offline workloads (up to 1M requests).
+For large-volume asynchronous workloads (up to 1M requests). Results are returned hours later, not in real-time. Not a replacement for interactive chat completions.
 
 ```python
 # Inline mode (< 10k requests)
