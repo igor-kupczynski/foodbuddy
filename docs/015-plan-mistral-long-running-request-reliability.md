@@ -1,6 +1,6 @@
 # Plan 015: Mistral Long-Running Request Reliability (App + Evals Parity)
 
-Status: In Progress on 2026-02-21 (implementation complete; blocked on upstream image-path 502 stability).
+Status: In Progress on 2026-02-21 (implementation complete; blocked on upstream URLSession HTTP/3 path instability for image requests).
 
 ## Goal
 
@@ -82,7 +82,16 @@ Implication:
 - `xcodebuild test -project FoodBuddy.xcodeproj -scheme FoodBuddy -destination 'platform=macOS,arch=x86_64'` -> pass
 - `make eval-run` -> runs all cases; `case-002` passes, `case-001` still fails after retries with upstream HTML `502 Bad gateway` on image requests
 
+## Investigation Update (2026-02-21)
+
+- Built the same request shape (model, prompt, strict `response_format`, two case-001 images, `stream: true`, `max_tokens: 400`) and replayed it outside the eval runner.
+- `curl` to `https://api.mistral.ai/v1/chat/completions` succeeds consistently (`HTTP/2 200`, SSE stream starts immediately; 5/5 successful runs).
+- `URLSession` with the same body and headers fails (`HTTP 502` HTML Cloudflare page at ~15s, or timeout/cancel variants).
+- `URLSessionTaskMetrics` for failing runs reports `networkProtocolName = h3` and Cloudflare IPv6 edge address `2606:4700::6812:1698`.
+- Explicit request opt-outs (`assumesHTTP3Capable = false`, `allowsPersistentDNS = false`) did not prevent `h3` selection in tested runs.
+- Conclusion: this is not a prompt/schema/body mismatch; failure is tied to URLSession + Cloudflare HTTP/3 transport path for this workload.
+
 ## Blocker
 
-- `case-001` remains non-deterministically blocked by repeated upstream `502` responses from `https://api.mistral.ai/v1/chat/completions` when sending image payloads (notes-only case succeeds).
-- Current implementation now captures bounded response previews, first-byte timing, request size, and retry attempts, which confirms transport parity and narrows the issue to upstream image-path availability/stability.
+- `case-001` remains blocked by URLSession requests negotiating HTTP/3 (`h3`) to Cloudflare and returning `502`/timeout on image payloads, while equivalent `curl` HTTP/2 requests succeed.
+- Current implementation captures bounded response previews, timing, request size, and retry attempts; additional task-metrics capture is needed to persist protocol-level evidence (`h2`/`h3`, remote address, cf-ray) directly in artifacts.

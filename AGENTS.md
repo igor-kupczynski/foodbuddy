@@ -65,3 +65,4 @@
 - When extracting AI payload logic to a shared package, add a parity test that shared schema category identifiers exactly match app `DQSCategory` identifiers; this prevents silent request-schema drift between app and eval harness.
 - For local evals, keep transport parity with the app: use URLSession-only requests and capture actionable timeout/cancellation diagnostics in eval notes/artifacts rather than adding a separate curl transport path.
 - For Mistral streaming calls, bound non-2xx body preview reads (don’t wait for full EOF), and retry transient HTTP `408/429/5xx` plus retryable `URLError`s; this avoids masking upstream failures as generic cancellation and improves reliability diagnostics.
+- For Mistral image streaming failures behind Cloudflare, compare URLSession vs curl with the same JSON body before changing prompts/schemas; URLSession may negotiate HTTP/3 (`h3`) and fail with `502`/timeouts while curl over `h2` succeeds.
