@@ -127,6 +127,7 @@ cd evals && swift run FoodBuddyAIEvals --case case-001 --timeout-seconds 240
 The run writes a JSON artifact to `evals/results/`.
 The runner uses URLSession only (no curl fallback), streams chat-completions responses, and retries transient upstream failures (HTTP `408/429/5xx` and retryable transport errors).
 `make eval-run` executes every case under `evals/cases/` and reports aggregate failure count at the end.
+`make eval-run` and `make eval-run-case` use a real binary target dependency, so make only rebuilds evals when source/package inputs change.
 
 ## Run on iOS Simulator
 
