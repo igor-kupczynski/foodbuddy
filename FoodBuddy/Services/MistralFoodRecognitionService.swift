@@ -4,10 +4,72 @@ import Foundation
 import NIOCore
 import NIOFoundationCompat
 
+// MARK: - Transport protocol
+
+/// Abstracts HTTP POST with streaming response so the service has a single code path.
+/// Production uses AsyncHTTPClientTransport; tests inject a mock.
+protocol MistralHTTPTransport: Sendable {
+    func streamingPOST(
+        url: String,
+        headers: [(name: String, value: String)],
+        body: Data,
+        timeoutSeconds: TimeInterval
+    ) async throws -> (statusCode: Int, bodyLines: AsyncThrowingStream<String, Error>)
+}
+
+// MARK: - Production transport (AsyncHTTPClient, HTTP/2 only)
+
+/// Uses AsyncHTTPClient (SwiftNIO) which only advertises h2/http1.1 via ALPN,
+/// avoiding Cloudflare HTTP/3 (QUIC) 502 failures that URLSession causes.
+struct AsyncHTTPClientTransport: MistralHTTPTransport {
+    func streamingPOST(
+        url: String,
+        headers: [(name: String, value: String)],
+        body: Data,
+        timeoutSeconds: TimeInterval
+    ) async throws -> (statusCode: Int, bodyLines: AsyncThrowingStream<String, Error>) {
+        let httpClient = HTTPClient(eventLoopGroupProvider: .singleton)
+
+        var request = HTTPClientRequest(url: url)
+        request.method = .POST
+        for (name, value) in headers {
+            request.headers.add(name: name, value: value)
+        }
+        request.body = .bytes(ByteBuffer(data: body))
+
+        let response = try await httpClient.execute(request, timeout: .seconds(Int64(timeoutSeconds)))
+        let statusCode = Int(response.status.code)
+
+        let stream = AsyncThrowingStream<String, Error> { continuation in
+            let task = Task {
+                defer {
+                    continuation.finish()
+                    Task { try? await httpClient.shutdown() }
+                }
+                do {
+                    var lineBuffer = ByteBuffer()
+                    for try await chunk in response.body {
+                        lineBuffer.writeImmutableBuffer(chunk)
+                        while let line = lineBuffer.readLine() {
+                            continuation.yield(line)
+                        }
+                    }
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+
+        return (statusCode, stream)
+    }
+}
+
+// MARK: - Service
+
 struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendable {
     private enum Constants {
-        static let endpoint = URL(string: "https://api.mistral.ai/v1/chat/completions")
-        static let endpointString = "https://api.mistral.ai/v1/chat/completions"
+        static let endpointURL = "https://api.mistral.ai/v1/chat/completions"
         static let model = "mistral-large-latest"
         static let timeoutSeconds: TimeInterval = 240
         static let responseMaxTokens = 400
@@ -17,32 +79,15 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
         static let errorPreviewMaxLines = 8
     }
 
-    /// Transport layer for HTTP requests.
-    /// Production uses AsyncHTTPClient (HTTP/2 only, avoids Cloudflare h3 502s).
-    /// Tests use URLSession with URLProtocolStub for mocking.
-    enum Transport: @unchecked Sendable {
-        case asyncHTTPClient
-        case urlSession(URLSession)
-    }
-
     private let apiKeyStore: any MistralAPIKeyStoring
-    private let transport: Transport
+    private let transport: any MistralHTTPTransport
 
     init(
         apiKeyStore: any MistralAPIKeyStoring,
-        transport: Transport = .asyncHTTPClient
+        transport: any MistralHTTPTransport = AsyncHTTPClientTransport()
     ) {
         self.apiKeyStore = apiKeyStore
         self.transport = transport
-    }
-
-    /// Convenience init for tests that inject a mocked URLSession.
-    init(
-        apiKeyStore: any MistralAPIKeyStoring,
-        urlSession: URLSession
-    ) {
-        self.apiKeyStore = apiKeyStore
-        self.transport = .urlSession(urlSession)
     }
 
     func analyze(images: [Data], notes: String?) async throws -> FoodAnalysisResult {
@@ -65,39 +110,23 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
             throw FoodRecognitionServiceError.decodingError
         }
 
-        switch transport {
-        case .asyncHTTPClient:
-            return try await analyzeViaAsyncHTTPClient(key: key, requestBody: requestBody)
-        case .urlSession(let session):
-            return try await analyzeViaURLSession(key: key, requestBody: requestBody, session: session)
-        }
-    }
-
-    func describe(images: [Data], notes: String?) async throws -> String {
-        try await analyze(images: images, notes: notes).description
-    }
-
-    // MARK: - AsyncHTTPClient transport (production)
-
-    private func analyzeViaAsyncHTTPClient(key: String, requestBody: Data) async throws -> FoodAnalysisResult {
-        let httpClient = HTTPClient(eventLoopGroupProvider: .singleton)
-
-        var request = HTTPClientRequest(url: Constants.endpointString)
-        request.method = .POST
-        request.headers.add(name: "Content-Type", value: "application/json")
-        request.headers.add(name: "Authorization", value: "Bearer \(key)")
-        request.headers.add(name: "Accept", value: "text/event-stream")
-        request.body = .bytes(ByteBuffer(data: requestBody))
-
-        defer { Task { try? await httpClient.shutdown() } }
+        let headers: [(name: String, value: String)] = [
+            ("Content-Type", "application/json"),
+            ("Authorization", "Bearer \(key)"),
+            ("Accept", "text/event-stream"),
+        ]
 
         for attempt in 1...Constants.maxAttempts {
             do {
-                let response = try await httpClient.execute(request, timeout: .seconds(Int64(Constants.timeoutSeconds)))
-                let statusCode = Int(response.status.code)
+                let (statusCode, bodyLines) = try await transport.streamingPOST(
+                    url: Constants.endpointURL,
+                    headers: headers,
+                    body: requestBody,
+                    timeoutSeconds: Constants.timeoutSeconds
+                )
 
                 guard (200..<300).contains(statusCode) else {
-                    let bodyPreview = try await collectBodyPreviewAHC(from: response)
+                    let bodyPreview = await collectBodyPreview(from: bodyLines)
                     let error = FoodRecognitionServiceError.httpError(
                         statusCode: statusCode,
                         responseBody: bodyPreview
@@ -114,13 +143,9 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
                 rawLines.reserveCapacity(128)
 
                 var streamAccumulator = MistralStreamAccumulator()
-                var lineBuffer = ByteBuffer()
-                for try await chunk in response.body {
-                    lineBuffer.writeImmutableBuffer(chunk)
-                    while let line = lineBuffer.readLine() {
-                        rawLines.append(line)
-                        try streamAccumulator.consume(line: line)
-                    }
+                for try await line in bodyLines {
+                    rawLines.append(line)
+                    try streamAccumulator.consume(line: line)
                 }
 
                 return try parseStreamResult(accumulator: streamAccumulator, rawLines: rawLines)
@@ -148,105 +173,20 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
         throw FoodRecognitionServiceError.networkError
     }
 
-    private func collectBodyPreviewAHC(from response: HTTPClientResponse) async throws -> String? {
-        var body = ""
-        var linesRead = 0
-        var lineBuffer = ByteBuffer()
-
-        for try await chunk in response.body {
-            lineBuffer.writeImmutableBuffer(chunk)
-            while let line = lineBuffer.readLine() {
-                if !line.isEmpty {
-                    body += line + "\n"
-                }
-                linesRead += 1
-                if body.count >= Constants.errorPreviewMaxChars || linesRead >= Constants.errorPreviewMaxLines {
-                    return String(body.prefix(Constants.errorPreviewMaxChars))
-                }
-            }
-            if body.count >= Constants.errorPreviewMaxChars || linesRead >= Constants.errorPreviewMaxLines {
-                break
-            }
-        }
-
-        return body.isEmpty ? nil : String(body.prefix(Constants.errorPreviewMaxChars))
+    func describe(images: [Data], notes: String?) async throws -> String {
+        try await analyze(images: images, notes: notes).description
     }
 
-    // MARK: - URLSession transport (tests)
+    // MARK: - Private helpers
 
-    private func analyzeViaURLSession(key: String, requestBody: Data, session: URLSession) async throws -> FoodAnalysisResult {
-        guard let endpoint = Constants.endpoint else {
-            throw FoodRecognitionServiceError.decodingError
-        }
-
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
-        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
-        request.timeoutInterval = Constants.timeoutSeconds
-        request.httpBody = requestBody
-
-        for attempt in 1...Constants.maxAttempts {
-            do {
-                let (bytes, response) = try await session.bytes(for: request)
-                guard let httpResponse = response as? HTTPURLResponse else {
-                    throw FoodRecognitionServiceError.networkError
-                }
-
-                guard (200..<300).contains(httpResponse.statusCode) else {
-                    let bodyPreview = await collectBodyPreview(from: bytes)
-                    let error = FoodRecognitionServiceError.httpError(
-                        statusCode: httpResponse.statusCode,
-                        responseBody: bodyPreview
-                    )
-
-                    if shouldRetry(error: error, attempt: attempt) {
-                        await sleepBeforeRetry(attempt: attempt)
-                        continue
-                    }
-                    throw error
-                }
-
-                var rawLines: [String] = []
-                rawLines.reserveCapacity(128)
-
-                var streamAccumulator = MistralStreamAccumulator()
-                for try await line in bytes.lines {
-                    rawLines.append(line)
-                    try streamAccumulator.consume(line: line)
-                }
-
-                return try parseStreamResult(accumulator: streamAccumulator, rawLines: rawLines)
-            } catch let error as FoodRecognitionServiceError {
-                if shouldRetry(error: error, attempt: attempt) {
-                    await sleepBeforeRetry(attempt: attempt)
-                    continue
-                }
-                throw error
-            } catch let urlError as URLError {
-                if shouldRetry(urlError: urlError, attempt: attempt) {
-                    await sleepBeforeRetry(attempt: attempt)
-                    continue
-                }
-                throw FoodRecognitionServiceError.networkError
-            } catch {
-                throw FoodRecognitionServiceError.networkError
-            }
-        }
-
-        throw FoodRecognitionServiceError.networkError
-    }
-
-    private func collectBodyPreview(from bytes: URLSession.AsyncBytes) async -> String? {
+    private func collectBodyPreview(from lines: AsyncThrowingStream<String, Error>) async -> String? {
         var body = ""
         var linesRead = 0
 
         do {
-            for try await line in bytes.lines {
+            for try await line in lines {
                 if !line.isEmpty {
-                    body += line
-                    body += "\n"
+                    body += line + "\n"
                 }
                 linesRead += 1
                 if body.count >= Constants.errorPreviewMaxChars || linesRead >= Constants.errorPreviewMaxLines {
@@ -254,18 +194,11 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
                 }
             }
         } catch {
-            if body.isEmpty {
-                return nil
-            }
+            if body.isEmpty { return nil }
         }
 
-        guard !body.isEmpty else {
-            return nil
-        }
-        return String(body.prefix(Constants.errorPreviewMaxChars))
+        return body.isEmpty ? nil : String(body.prefix(Constants.errorPreviewMaxChars))
     }
-
-    // MARK: - Shared helpers
 
     private func parseStreamResult(accumulator: consuming MistralStreamAccumulator, rawLines: [String]) throws -> FoodAnalysisResult {
         do {
@@ -335,23 +268,6 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
         switch error {
         case .httpError(let statusCode, _):
             return [408, 429, 500, 502, 503, 504].contains(statusCode)
-        default:
-            return false
-        }
-    }
-
-    private func shouldRetry(urlError: URLError, attempt: Int) -> Bool {
-        guard attempt < Constants.maxAttempts else {
-            return false
-        }
-
-        if Task.isCancelled {
-            return false
-        }
-
-        switch urlError.code {
-        case .timedOut, .networkConnectionLost, .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed, .resourceUnavailable, .cancelled:
-            return true
         default:
             return false
         }
