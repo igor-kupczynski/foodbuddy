@@ -33,6 +33,7 @@ struct FoodBuddyAIEvals {
                 caseID: config.caseID,
                 caseRoot: caseRoot,
                 model: resolvedModel,
+                judgeModel: config.judgeModel,
                 apiKey: apiKey,
                 apiKeySource: apiKeySource,
                 timeoutSeconds: config.timeoutSeconds
@@ -54,6 +55,7 @@ private struct CLIConfig {
     let caseID: String
     let apiKeyOverride: String?
     let modelOverride: String?
+    let judgeModel: String
     let evalRootPath: String?
     let outputDirPath: String?
     let timeoutSeconds: TimeInterval
@@ -63,7 +65,10 @@ private struct CLIConfig {
     FoodBuddy AI Evals
 
     Usage:
-      swift run FoodBuddyAIEvals --case <case-id> [--api-key <key>] [--model <model-id>] [--eval-root <path>] [--output-dir <path>] [--timeout-seconds <seconds>]
+      swift run FoodBuddyAIEvals --case <case-id> [--api-key <key>] [--model <model-id>] [--judge-model <model-id>] [--eval-root <path>] [--output-dir <path>] [--timeout-seconds <seconds>]
+
+    Options:
+      --judge-model   Model for LLM-as-judge scoring (default: mistral-small-latest)
 
     API key resolution priority:
       1) --api-key
@@ -75,6 +80,7 @@ private struct CLIConfig {
         var caseID = "case-001"
         var apiKeyOverride: String?
         var modelOverride: String?
+        var judgeModel = "mistral-small-latest"
         var evalRootPath: String?
         var outputDirPath: String?
         var timeoutSeconds: TimeInterval = 180
@@ -95,6 +101,9 @@ private struct CLIConfig {
             case "--model":
                 index += 1
                 modelOverride = try value(for: arg, at: index, in: arguments)
+            case "--judge-model":
+                index += 1
+                judgeModel = try value(for: arg, at: index, in: arguments)
             case "--eval-root":
                 index += 1
                 evalRootPath = try value(for: arg, at: index, in: arguments)
@@ -118,6 +127,7 @@ private struct CLIConfig {
             caseID: caseID,
             apiKeyOverride: apiKeyOverride,
             modelOverride: modelOverride,
+            judgeModel: judgeModel,
             evalRootPath: evalRootPath,
             outputDirPath: outputDirPath,
             timeoutSeconds: timeoutSeconds,
@@ -141,6 +151,7 @@ private enum CLIError: LocalizedError {
     case invalidCase(String)
     case requestBuildFailed
     case fileWriteFailed
+    case judgeFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -158,9 +169,13 @@ private enum CLIError: LocalizedError {
             return "Failed to build Mistral request body."
         case .fileWriteFailed:
             return "Failed to write eval result artifact."
+        case .judgeFailed(let message):
+            return "LLM judge failed: \(message)"
         }
     }
 }
+
+// MARK: - Case & Expected Types
 
 private struct EvalCase: Decodable {
     let id: String
@@ -170,39 +185,62 @@ private struct EvalCase: Decodable {
     let expected: EvalExpected?
 }
 
-private struct EvalExpected: Decodable, Encodable {
+private struct EvalExpected: Codable {
     let passThreshold: Double?
-    let servingsTolerance: Double?
-    let description: DescriptionExpectation?
+    let mealContext: String?
+    let descriptionHints: [String]?
     let foodItems: [ExpectedFoodItem]?
 
     enum CodingKeys: String, CodingKey {
         case passThreshold = "pass_threshold"
-        case servingsTolerance = "servings_tolerance"
-        case description
+        case mealContext = "meal_context"
+        case descriptionHints = "description_hints"
         case foodItems = "food_items"
     }
 }
 
-private struct DescriptionExpectation: Decodable, Encodable {
-    let minSentences: Int?
-    let maxSentences: Int?
-    let mustContain: [String]?
-
-    enum CodingKeys: String, CodingKey {
-        case minSentences = "min_sentences"
-        case maxSentences = "max_sentences"
-        case mustContain = "must_contain"
-    }
-}
-
-private struct ExpectedFoodItem: Decodable, Encodable {
+private struct ExpectedFoodItem: Codable {
     let name: String
     let categories: [String]
     let servings: Double
 }
 
-private struct MistralUsage: Decodable, Encodable {
+// MARK: - Judge Types
+
+private struct JudgeDimensionScore: Codable {
+    let score: Int
+    let reasoning: String
+}
+
+private struct JudgeResult: Codable {
+    let itemIdentification: JudgeDimensionScore
+    let categoryAccuracy: JudgeDimensionScore
+    let servingEstimation: JudgeDimensionScore
+    let descriptionQuality: JudgeDimensionScore
+    let overallNotes: String?
+
+    enum CodingKeys: String, CodingKey {
+        case itemIdentification = "item_identification"
+        case categoryAccuracy = "category_accuracy"
+        case servingEstimation = "serving_estimation"
+        case descriptionQuality = "description_quality"
+        case overallNotes = "overall_notes"
+    }
+
+    /// Weighted average scaled to 0-100.
+    /// Weights: item_identification 35%, category_accuracy 30%, serving_estimation 15%, description_quality 20%.
+    var weightedScore: Double {
+        let raw = Double(itemIdentification.score) * 0.35
+            + Double(categoryAccuracy.score) * 0.30
+            + Double(servingEstimation.score) * 0.15
+            + Double(descriptionQuality.score) * 0.20
+        return (raw / 10.0) * 100.0
+    }
+}
+
+// MARK: - Result Types
+
+private struct MistralUsage: Codable {
     let promptTokens: Int?
     let completionTokens: Int?
     let totalTokens: Int?
@@ -232,16 +270,16 @@ private struct HardGates: Encodable {
 }
 
 private struct ComponentScores: Encodable {
-    let description: Double?
-    let itemExtraction: Double?
-    let categoryQuality: Double?
-    let servingQuality: Double?
+    let itemIdentification: Int?
+    let categoryAccuracy: Int?
+    let servingEstimation: Int?
+    let descriptionQuality: Int?
 
     enum CodingKeys: String, CodingKey {
-        case description
-        case itemExtraction = "item_extraction"
-        case categoryQuality = "category_quality"
-        case servingQuality = "serving_quality"
+        case itemIdentification = "item_identification"
+        case categoryAccuracy = "category_accuracy"
+        case servingEstimation = "serving_estimation"
+        case descriptionQuality = "description_quality"
     }
 }
 
@@ -250,6 +288,7 @@ private struct EvalRunResult: Encodable {
     let caseID: String
     let caseFileID: String
     let model: String
+    let judgeModel: String
     let status: String
     let score: Double?
     let threshold: Double?
@@ -261,6 +300,7 @@ private struct EvalRunResult: Encodable {
     let httpStatus: Int?
     let hardGates: HardGates
     let componentScores: ComponentScores
+    let judgeReasoning: JudgeReasoning?
     let usage: MistralUsage?
     let actualPayload: FoodAnalysisPayload?
     let expected: EvalExpected?
@@ -272,6 +312,7 @@ private struct EvalRunResult: Encodable {
         case caseID = "case_id"
         case caseFileID = "case_file_id"
         case model
+        case judgeModel = "judge_model"
         case status
         case score
         case threshold
@@ -283,6 +324,7 @@ private struct EvalRunResult: Encodable {
         case httpStatus = "http_status"
         case hardGates = "hard_gates"
         case componentScores = "component_scores"
+        case judgeReasoning = "judge_reasoning"
         case usage
         case actualPayload = "actual_payload"
         case expected
@@ -290,6 +332,25 @@ private struct EvalRunResult: Encodable {
         case notes
     }
 }
+
+/// Reasoning strings from the judge, persisted in the artifact for debugging.
+private struct JudgeReasoning: Encodable {
+    let itemIdentification: String
+    let categoryAccuracy: String
+    let servingEstimation: String
+    let descriptionQuality: String
+    let overallNotes: String?
+
+    enum CodingKeys: String, CodingKey {
+        case itemIdentification = "item_identification"
+        case categoryAccuracy = "category_accuracy"
+        case servingEstimation = "serving_estimation"
+        case descriptionQuality = "description_quality"
+        case overallNotes = "overall_notes"
+    }
+}
+
+// MARK: - Eval Root & Case Loading
 
 private func resolveEvalRoot(explicitPath: String?) throws -> URL {
     let fileManager = FileManager.default
@@ -405,11 +466,14 @@ private func outputFileURL(caseID: String, evalRoot: URL, explicitOutputDir: Str
     return baseDir.appendingPathComponent("\(caseID)-\(timestamp).json")
 }
 
+// MARK: - Eval Runner
+
 private func runEval(
     evalCase: EvalCase,
     caseID: String,
     caseRoot: URL,
     model: String,
+    judgeModel: String,
     apiKey: String,
     apiKeySource: APIKeySource,
     timeoutSeconds: TimeInterval
@@ -437,6 +501,7 @@ private func runEval(
                 evalCase: evalCase,
                 caseID: caseID,
                 model: model,
+                judgeModel: judgeModel,
                 apiKeySource: apiKeySource,
                 latencyMs: latencyMs,
                 requestBodyBytes: requestBodyBytes,
@@ -446,6 +511,7 @@ private func runEval(
                 hardGates: hardGates,
                 usage: usage,
                 actualPayload: actualPayload,
+                judgeResult: nil,
                 rawResponseBody: rawResponseBody,
                 notes: notes
             )
@@ -479,6 +545,7 @@ private func runEval(
             evalCase: evalCase,
             caseID: caseID,
             model: model,
+            judgeModel: judgeModel,
             apiKeySource: apiKeySource,
             latencyMs: latencyMs,
             requestBodyBytes: requestBodyBytes,
@@ -488,6 +555,7 @@ private func runEval(
             hardGates: hardGates,
             usage: usage,
             actualPayload: actualPayload,
+            judgeResult: nil,
             rawResponseBody: rawResponseBody,
             notes: notes
         )
@@ -624,16 +692,35 @@ private func runEval(
         }
     }
 
-    try? await httpClient.shutdown()
-
     if hardGates.http2xx, actualPayload == nil {
         notes.append("HTTP succeeded but payload could not be parsed and validated.")
     }
+
+    // Run LLM-as-judge if hard gates passed and we have a payload
+    var judgeResult: JudgeResult?
+    if hardGates.allPassed, let actualPayload, let expected = evalCase.expected {
+        do {
+            judgeResult = try await callJudge(
+                httpClient: httpClient,
+                apiKey: apiKey,
+                judgeModel: judgeModel,
+                expected: expected,
+                actualPayload: actualPayload,
+                timeoutSeconds: timeoutSeconds
+            )
+            notes.append("LLM judge scored successfully using \(judgeModel).")
+        } catch {
+            notes.append("LLM judge call failed: \(error). Scoring will use WARN status.")
+        }
+    }
+
+    try? await httpClient.shutdown()
 
     return buildResult(
         evalCase: evalCase,
         caseID: caseID,
         model: model,
+        judgeModel: judgeModel,
         apiKeySource: apiKeySource,
         latencyMs: latencyMs,
         requestBodyBytes: requestBodyBytes,
@@ -643,15 +730,157 @@ private func runEval(
         hardGates: hardGates,
         usage: usage,
         actualPayload: actualPayload,
+        judgeResult: judgeResult,
         rawResponseBody: rawResponseBody,
         notes: notes
     )
 }
 
+// MARK: - LLM-as-Judge
+
+private func callJudge(
+    httpClient: HTTPClient,
+    apiKey: String,
+    judgeModel: String,
+    expected: EvalExpected,
+    actualPayload: FoodAnalysisPayload,
+    timeoutSeconds: TimeInterval
+) async throws -> JudgeResult {
+    let prompt = buildJudgePrompt(expected: expected, actualPayload: actualPayload)
+
+    let requestBody: [String: Any] = [
+        "model": judgeModel,
+        "messages": [
+            ["role": "user", "content": prompt]
+        ],
+        "response_format": ["type": "json_object"],
+        "max_tokens": 500,
+        "temperature": 0.0
+    ]
+
+    let requestData = try JSONSerialization.data(withJSONObject: requestBody)
+
+    var request = HTTPClientRequest(url: "https://api.mistral.ai/v1/chat/completions")
+    request.method = .POST
+    request.headers.add(name: "Content-Type", value: "application/json")
+    request.headers.add(name: "Authorization", value: "Bearer \(apiKey)")
+    request.body = .bytes(ByteBuffer(data: requestData))
+
+    let response = try await httpClient.execute(request, timeout: .seconds(Int64(timeoutSeconds)))
+    let statusCode = Int(response.status.code)
+    guard (200..<300).contains(statusCode) else {
+        throw CLIError.judgeFailed("HTTP \(statusCode) from judge model")
+    }
+
+    var bodyBuffer = ByteBuffer()
+    for try await chunk in response.body {
+        bodyBuffer.writeImmutableBuffer(chunk)
+    }
+    guard let bodyData = bodyBuffer.readData(length: bodyBuffer.readableBytes) else {
+        throw CLIError.judgeFailed("Empty response body")
+    }
+
+    // Parse the Mistral response envelope to extract the assistant content
+    guard let envelope = try JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+          let choices = envelope["choices"] as? [[String: Any]],
+          let firstChoice = choices.first,
+          let message = firstChoice["message"] as? [String: Any],
+          let content = message["content"] as? String else {
+        throw CLIError.judgeFailed("Could not extract assistant content from judge response")
+    }
+
+    guard let contentData = content.data(using: .utf8) else {
+        throw CLIError.judgeFailed("Judge content is not valid UTF-8")
+    }
+
+    let decoder = JSONDecoder()
+    let result = try decoder.decode(JudgeResult.self, from: contentData)
+
+    // Validate score ranges
+    let scores = [
+        result.itemIdentification.score,
+        result.categoryAccuracy.score,
+        result.servingEstimation.score,
+        result.descriptionQuality.score,
+    ]
+    for score in scores {
+        guard (0...10).contains(score) else {
+            throw CLIError.judgeFailed("Judge returned score \(score) outside 0-10 range")
+        }
+    }
+
+    return result
+}
+
+private func buildJudgePrompt(expected: EvalExpected, actualPayload: FoodAnalysisPayload) -> String {
+    let categoryList = FoodAnalysisCategories.all.joined(separator: ", ")
+
+    // Serialize expected food items for the judge
+    var expectedItemsJSON = "[]"
+    if let items = expected.foodItems {
+        let itemDicts = items.map { item -> [String: Any] in
+            ["name": item.name, "categories": item.categories, "servings": item.servings]
+        }
+        if let data = try? JSONSerialization.data(withJSONObject: itemDicts, options: [.prettyPrinted, .sortedKeys]),
+           let str = String(data: data, encoding: .utf8) {
+            expectedItemsJSON = str
+        }
+    }
+
+    // Serialize actual food items
+    let actualItemDicts = actualPayload.foodItems.map { item -> [String: Any] in
+        ["name": item.name, "categories": item.categories, "servings": item.servings]
+    }
+    var actualItemsJSON = "[]"
+    if let data = try? JSONSerialization.data(withJSONObject: actualItemDicts, options: [.prettyPrinted, .sortedKeys]),
+       let str = String(data: data, encoding: .utf8) {
+        actualItemsJSON = str
+    }
+
+    let mealContext = expected.mealContext ?? "No meal context provided."
+    let hints = expected.descriptionHints ?? []
+    let hintsText = hints.isEmpty ? "None" : hints.joined(separator: ", ")
+
+    return """
+    You are a food analysis evaluator. Compare an AI's meal analysis against the expected answer and score it.
+
+    ## Meal Context
+    \(mealContext)
+
+    ## Expected Output
+    Description hints (keywords that should appear): \(hintsText)
+    Expected food items:
+    \(expectedItemsJSON)
+
+    ## Actual AI Output
+    Description: \(actualPayload.description)
+    Food items:
+    \(actualItemsJSON)
+
+    ## Scoring Rubric
+
+    Score each dimension 0-10:
+
+    1. **item_identification**: Did the AI identify the correct food items? Semantically equivalent names are fine (e.g. "chicken breast" ≈ "grilled chicken"). Penalize missing items more than extra reasonable items. Score 8-10 if all major items found, 5-7 if some missing, 0-4 if mostly wrong.
+
+    2. **category_accuracy**: Are the DQS categories assigned correctly for each item? Valid categories: \(categoryList). Penalize wrong categories. Partially credit items where some categories are correct.
+
+    3. **serving_estimation**: Are the serving counts reasonable? Within ±0.5 of expected is excellent (9-10). Within ±1.0 is good (6-8). Larger deviations score lower.
+
+    4. **description_quality**: Is the description accurate, relevant to the meal, and concise (1-3 sentences)? Does it mention the key foods?
+
+    Respond with ONLY this JSON (no other text):
+    {"item_identification": {"score": <0-10>, "reasoning": "<1 sentence>"}, "category_accuracy": {"score": <0-10>, "reasoning": "<1 sentence>"}, "serving_estimation": {"score": <0-10>, "reasoning": "<1 sentence>"}, "description_quality": {"score": <0-10>, "reasoning": "<1 sentence>"}, "overall_notes": "<optional 1 sentence>"}
+    """
+}
+
+// MARK: - Scoring
+
 private func buildResult(
     evalCase: EvalCase,
     caseID: String,
     model: String,
+    judgeModel: String,
     apiKeySource: APIKeySource,
     latencyMs: Int?,
     requestBodyBytes: Int?,
@@ -661,19 +890,55 @@ private func buildResult(
     hardGates: HardGates,
     usage: MistralUsage?,
     actualPayload: FoodAnalysisPayload?,
+    judgeResult: JudgeResult?,
     rawResponseBody: String?,
     notes: [String]
 ) -> EvalRunResult {
-    let scoreResult = score(evalCase: evalCase, actualPayload: actualPayload, hardGatesPassed: hardGates.allPassed)
+    let threshold = evalCase.expected?.passThreshold ?? 75
+    let status: String
+    let score: Double?
+    let components: ComponentScores
+    let reasoning: JudgeReasoning?
+
+    if !hardGates.allPassed {
+        status = "FAIL"
+        score = nil
+        components = ComponentScores(itemIdentification: nil, categoryAccuracy: nil, servingEstimation: nil, descriptionQuality: nil)
+        reasoning = nil
+    } else if let judgeResult {
+        let weighted = (judgeResult.weightedScore * 100).rounded() / 100
+        score = weighted
+        status = weighted >= threshold ? "PASS" : "WARN"
+        components = ComponentScores(
+            itemIdentification: judgeResult.itemIdentification.score,
+            categoryAccuracy: judgeResult.categoryAccuracy.score,
+            servingEstimation: judgeResult.servingEstimation.score,
+            descriptionQuality: judgeResult.descriptionQuality.score
+        )
+        reasoning = JudgeReasoning(
+            itemIdentification: judgeResult.itemIdentification.reasoning,
+            categoryAccuracy: judgeResult.categoryAccuracy.reasoning,
+            servingEstimation: judgeResult.servingEstimation.reasoning,
+            descriptionQuality: judgeResult.descriptionQuality.reasoning,
+            overallNotes: judgeResult.overallNotes
+        )
+    } else {
+        // Hard gates passed but judge didn't run (no expected data or judge failed)
+        status = "WARN"
+        score = nil
+        components = ComponentScores(itemIdentification: nil, categoryAccuracy: nil, servingEstimation: nil, descriptionQuality: nil)
+        reasoning = nil
+    }
 
     return EvalRunResult(
         runAt: ISO8601DateFormatter().string(from: Date()),
         caseID: caseID,
         caseFileID: evalCase.id,
         model: model,
-        status: scoreResult.status,
-        score: scoreResult.score,
-        threshold: scoreResult.threshold,
+        judgeModel: judgeModel,
+        status: status,
+        score: score,
+        threshold: threshold,
         apiKeySource: apiKeySource,
         latencyMs: latencyMs,
         requestBodyBytes: requestBodyBytes,
@@ -681,14 +946,17 @@ private func buildResult(
         streamCompleted: streamCompleted,
         httpStatus: httpStatus,
         hardGates: hardGates,
-        componentScores: scoreResult.components,
+        componentScores: components,
+        judgeReasoning: reasoning,
         usage: usage,
         actualPayload: actualPayload,
         expected: evalCase.expected,
         responseBody: rawResponseBody,
-        notes: notes + scoreResult.notes
+        notes: notes
     )
 }
+
+// MARK: - Helpers
 
 private func mapUsage(_ usage: MistralStreamUsage?) -> MistralUsage? {
     guard let usage else {
@@ -736,175 +1004,7 @@ extension ByteBuffer {
     }
 }
 
-private func score(evalCase: EvalCase, actualPayload: FoodAnalysisPayload?, hardGatesPassed: Bool) -> (status: String, score: Double?, threshold: Double?, components: ComponentScores, notes: [String]) {
-    guard hardGatesPassed, let actualPayload else {
-        return (
-            status: "FAIL",
-            score: nil,
-            threshold: nil,
-            components: ComponentScores(description: nil, itemExtraction: nil, categoryQuality: nil, servingQuality: nil),
-            notes: ["Hard-gate failure blocks weighted scoring."]
-        )
-    }
-
-    let expected = evalCase.expected
-    let descriptionRatio = descriptionQuality(actual: actualPayload.description, expectation: expected?.description)
-    let itemRatio = itemExtractionQuality(actual: actualPayload.foodItems, expected: expected?.foodItems)
-    let categoryRatio = categoryQuality(actual: actualPayload.foodItems, expected: expected?.foodItems)
-    let servingRatio = servingQuality(
-        actual: actualPayload.foodItems,
-        expected: expected?.foodItems,
-        tolerance: expected?.servingsTolerance ?? 0.5
-    )
-
-    let weights: [(Double, Double?)] = [
-        (20, descriptionRatio),
-        (40, itemRatio),
-        (30, categoryRatio),
-        (10, servingRatio)
-    ]
-
-    let enabledWeight = weights.reduce(0.0) { partial, item in
-        item.1 == nil ? partial : partial + item.0
-    }
-    let weightedSum = weights.reduce(0.0) { partial, item in
-        guard let ratio = item.1 else { return partial }
-        return partial + (item.0 * ratio)
-    }
-
-    let normalizedScore = enabledWeight > 0 ? (weightedSum / enabledWeight) * 100 : nil
-    let roundedScore = normalizedScore.map { ($0 * 100).rounded() / 100 }
-    let threshold = expected?.passThreshold ?? 75
-    let status: String
-    if let roundedScore {
-        status = roundedScore >= threshold ? "PASS" : "WARN"
-    } else {
-        status = "WARN"
-    }
-
-    var notes: [String] = []
-    if expected?.foodItems == nil {
-        notes.append("Expected food_items omitted; extraction/category/serving components were skipped.")
-    }
-
-    return (
-        status: status,
-        score: roundedScore,
-        threshold: threshold,
-        components: ComponentScores(
-            description: (descriptionRatio * 100).rounded() / 100,
-            itemExtraction: itemRatio.map { ($0 * 100).rounded() / 100 },
-            categoryQuality: categoryRatio.map { ($0 * 100).rounded() / 100 },
-            servingQuality: servingRatio.map { ($0 * 100).rounded() / 100 }
-        ),
-        notes: notes
-    )
-}
-
-private func descriptionQuality(actual: String, expectation: DescriptionExpectation?) -> Double {
-    let trimmed = actual.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !trimmed.isEmpty else { return 0 }
-
-    let minSentences = expectation?.minSentences ?? 1
-    let maxSentences = expectation?.maxSentences ?? 3
-    let mustContain = expectation?.mustContain ?? []
-
-    let sentenceCount = countSentences(in: trimmed)
-    let sentenceScore = (minSentences...maxSentences).contains(sentenceCount) ? 1.0 : 0.5
-
-    guard !mustContain.isEmpty else {
-        return sentenceScore
-    }
-
-    let lower = trimmed.lowercased()
-    let matched = mustContain.filter { lower.contains($0.lowercased()) }.count
-    let coverage = Double(matched) / Double(mustContain.count)
-    return (sentenceScore * 0.5) + (coverage * 0.5)
-}
-
-private func itemExtractionQuality(actual: [FoodAnalysisItem], expected: [ExpectedFoodItem]?) -> Double? {
-    guard let expected else { return nil }
-
-    let predicted = Set(actual.map { normalizeName($0.name) })
-    let wanted = Set(expected.map { normalizeName($0.name) })
-
-    if wanted.isEmpty && predicted.isEmpty {
-        return 1
-    }
-
-    let overlap = predicted.intersection(wanted).count
-    let precision = predicted.isEmpty ? 0 : Double(overlap) / Double(predicted.count)
-    let recall = wanted.isEmpty ? 0 : Double(overlap) / Double(wanted.count)
-
-    if precision + recall == 0 {
-        return 0
-    }
-    return (2 * precision * recall) / (precision + recall)
-}
-
-private func categoryQuality(actual: [FoodAnalysisItem], expected: [ExpectedFoodItem]?) -> Double? {
-    guard let expected else { return nil }
-    if expected.isEmpty {
-        return actual.isEmpty ? 1 : 0
-    }
-
-    let actualByName = Dictionary(uniqueKeysWithValues: actual.map { (normalizeName($0.name), $0) })
-    let scores = expected.map { expectedItem -> Double in
-        let key = normalizeName(expectedItem.name)
-        guard let actualItem = actualByName[key] else {
-            return 0
-        }
-
-        let expectedCategories = Set(expectedItem.categories)
-        let actualCategories = Set(actualItem.categories)
-        if expectedCategories.isEmpty && actualCategories.isEmpty {
-            return 1
-        }
-
-        let overlap = expectedCategories.intersection(actualCategories).count
-        let precision = actualCategories.isEmpty ? 0 : Double(overlap) / Double(actualCategories.count)
-        let recall = expectedCategories.isEmpty ? 0 : Double(overlap) / Double(expectedCategories.count)
-        if precision + recall == 0 {
-            return 0
-        }
-        return (2 * precision * recall) / (precision + recall)
-    }
-
-    let total = scores.reduce(0, +)
-    return total / Double(scores.count)
-}
-
-private func servingQuality(actual: [FoodAnalysisItem], expected: [ExpectedFoodItem]?, tolerance: Double) -> Double? {
-    guard let expected else { return nil }
-    if expected.isEmpty {
-        return actual.isEmpty ? 1 : 0
-    }
-
-    let actualByName = Dictionary(uniqueKeysWithValues: actual.map { (normalizeName($0.name), $0) })
-    let matches = expected.map { expectedItem -> Double in
-        let key = normalizeName(expectedItem.name)
-        guard let actualItem = actualByName[key] else {
-            return 0
-        }
-        return abs(actualItem.servings - expectedItem.servings) <= tolerance ? 1 : 0
-    }
-
-    let total = matches.reduce(0, +)
-    return total / Double(matches.count)
-}
-
-private func countSentences(in text: String) -> Int {
-    let separators = CharacterSet(charactersIn: ".!?")
-    let parts = text.components(separatedBy: separators)
-    return parts.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count
-}
-
-private func normalizeName(_ name: String) -> String {
-    let lowered = name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-    let punctuation = CharacterSet.alphanumerics.inverted
-    let words = lowered.components(separatedBy: punctuation).filter { !$0.isEmpty }
-    return words.joined(separator: " ")
-}
+// MARK: - Schema Validation
 
 private func validateSchema(object: Any, allowedCategories: Set<String>) -> Bool {
     guard let root = object as? [String: Any] else {
@@ -943,6 +1043,8 @@ private func validateSchema(object: Any, allowedCategories: Set<String>) -> Bool
 
     return true
 }
+
+// MARK: - Image Preprocessing
 
 private func preprocessImageForAnalysis(
     _ sourceData: Data,
@@ -1009,6 +1111,8 @@ private func preprocessImageForAnalysis(
     return preparedData.isEmpty ? sourceData : preparedData
 }
 
+// MARK: - Output
+
 private func writeResult(_ result: EvalRunResult, to fileURL: URL) throws {
     let directory = fileURL.deletingLastPathComponent()
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -1035,11 +1139,33 @@ private func truncateForLog(_ value: String, maxChars: Int) -> String {
 private func printSummary(result: EvalRunResult, outputURL: URL) {
     print("Case: \(result.caseID) (\(result.caseFileID))")
     print("Model: \(result.model)")
+    print("Judge: \(result.judgeModel)")
     print("Status: \(result.status)")
     if let score = result.score, let threshold = result.threshold {
         print("Score: \(score) / 100 (threshold \(threshold))")
     }
     print("Hard gates: http2xx=\(result.hardGates.http2xx) topLevelDecoded=\(result.hardGates.topLevelDecoded) contentJSONParsed=\(result.hardGates.contentJSONParsed) schemaConformant=\(result.hardGates.schemaConformant)")
+
+    // Print judge component scores and reasoning
+    if let reasoning = result.judgeReasoning {
+        print("Judge scores:")
+        if let s = result.componentScores.itemIdentification {
+            print("  Item identification: \(s)/10 — \(reasoning.itemIdentification)")
+        }
+        if let s = result.componentScores.categoryAccuracy {
+            print("  Category accuracy:   \(s)/10 — \(reasoning.categoryAccuracy)")
+        }
+        if let s = result.componentScores.servingEstimation {
+            print("  Serving estimation:  \(s)/10 — \(reasoning.servingEstimation)")
+        }
+        if let s = result.componentScores.descriptionQuality {
+            print("  Description quality: \(s)/10 — \(reasoning.descriptionQuality)")
+        }
+        if let notes = reasoning.overallNotes, !notes.isEmpty {
+            print("  Overall: \(notes)")
+        }
+    }
+
     if let latencyMs = result.latencyMs {
         print("Latency: \(latencyMs) ms")
     }

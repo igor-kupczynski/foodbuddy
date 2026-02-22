@@ -4,15 +4,13 @@
   "notes": "Quick lunch: Greek yogurt with banana and chia seeds.",
   "images": [],
   "expected": {
-    "pass_threshold": 80,
-    "description": {
-      "min_sentences": 1,
-      "max_sentences": 3,
-      "must_contain": [
-        "yogurt",
-        "banana"
-      ]
-    },
-    "food_items": null
+    "pass_threshold": 70,
+    "meal_context": "A simple lunch described in a note: Greek yogurt topped with banana and chia seeds. No photos provided.",
+    "description_hints": ["yogurt", "banana", "chia"],
+    "food_items": [
+      {"name": "Greek yogurt", "categories": ["dairy"], "servings": 1.0},
+      {"name": "banana", "categories": ["fruits"], "servings": 1.0},
+      {"name": "chia seeds", "categories": ["nuts_and_seeds"], "servings": 0.5}
+    ]
   }
 }
