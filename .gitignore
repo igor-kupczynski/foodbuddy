@@ -23,3 +23,6 @@ evals/results/*.json
 # Editor / tooling
 .vscode/
 .idea/
+
+# Claude Code
+.claude/worktrees/
