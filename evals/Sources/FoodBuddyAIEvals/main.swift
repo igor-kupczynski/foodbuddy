@@ -228,12 +228,12 @@ private struct JudgeResult: Codable {
     }
 
     /// Weighted average scaled to 0-100.
-    /// Weights: item_identification 35%, category_accuracy 30%, serving_estimation 15%, description_quality 20%.
+    /// Weights: category_accuracy 40%, serving_estimation 25%, item_identification 25%, description_quality 10%.
     var weightedScore: Double {
-        let raw = Double(itemIdentification.score) * 0.35
-            + Double(categoryAccuracy.score) * 0.30
-            + Double(servingEstimation.score) * 0.15
-            + Double(descriptionQuality.score) * 0.20
+        let raw = Double(categoryAccuracy.score) * 0.40
+            + Double(servingEstimation.score) * 0.25
+            + Double(itemIdentification.score) * 0.25
+            + Double(descriptionQuality.score) * 0.10
         return (raw / 10.0) * 100.0
     }
 }
@@ -859,15 +859,15 @@ private func buildJudgePrompt(expected: EvalExpected, actualPayload: FoodAnalysi
 
     ## Scoring Rubric
 
-    Score each dimension 0-10:
+    Score each dimension 0-10. **Category accuracy is the most important dimension.**
 
-    1. **item_identification**: Did the AI identify the correct food items? Semantically equivalent names are fine (e.g. "chicken breast" ≈ "grilled chicken"). Penalize missing items more than extra reasonable items. Score 8-10 if all major items found, 5-7 if some missing, 0-4 if mostly wrong.
+    1. **item_identification**: Did the AI identify the correct food items? Be lenient on exact names — semantically equivalent names are fine (e.g. "chicken breast" ≈ "grilled chicken", "penne" ≈ "pasta", "sourdough" ≈ "bread"). What matters is that the AI found the right number of distinct food items. Penalize missing items more than extra reasonable items. Score 8-10 if all major items found, 5-7 if some missing, 0-4 if mostly wrong.
 
-    2. **category_accuracy**: Are the DQS categories assigned correctly for each item? Valid categories: \(categoryList). Penalize wrong categories. Partially credit items where some categories are correct.
+    2. **category_accuracy**: THIS IS THE PRIMARY METRIC. Are the DQS categories assigned correctly for each item? Valid categories: \(categoryList). Even if the AI uses a slightly different name for a food item (e.g. "rigatoni" instead of "penne"), the category should still be correct (both are refined_grains). Penalize wrong categories strictly. Score 9-10 if all categories correct, 7-8 if one minor error, 5-6 if multiple errors, 0-4 if mostly wrong.
 
     3. **serving_estimation**: Are the serving counts reasonable? Within ±0.5 of expected is excellent (9-10). Within ±1.0 is good (6-8). Larger deviations score lower.
 
-    4. **description_quality**: Is the description accurate, relevant to the meal, and concise (1-3 sentences)? Does it mention the key foods?
+    4. **description_quality**: Is the description relevant to the meal and concise (1-3 sentences)? Be lenient on exact food names — e.g. saying "rigatoni" instead of "penne" or "rye bread" instead of "sourdough" is acceptable as long as the description captures the overall meal accurately.
 
     Respond with ONLY this JSON (no other text):
     {"item_identification": {"score": <0-10>, "reasoning": "<1 sentence>"}, "category_accuracy": {"score": <0-10>, "reasoning": "<1 sentence>"}, "serving_estimation": {"score": <0-10>, "reasoning": "<1 sentence>"}, "description_quality": {"score": <0-10>, "reasoning": "<1 sentence>"}, "overall_notes": "<optional 1 sentence>"}
