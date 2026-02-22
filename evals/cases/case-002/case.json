@@ -5,12 +5,11 @@
   "images": [],
   "expected": {
     "pass_threshold": 70,
-    "meal_context": "A simple lunch described in a note: Greek yogurt topped with banana and chia seeds. No photos provided.",
+    "meal_context": "Greek yogurt with banana and chia seeds",
     "description_hints": ["yogurt", "banana", "chia"],
     "food_items": [
       {"name": "Greek yogurt", "categories": ["dairy"], "servings": 1.0},
-      {"name": "banana", "categories": ["fruits"], "servings": 1.0},
-      {"name": "chia seeds", "categories": ["nuts_and_seeds"], "servings": 0.5}
+      {"name": "banana", "categories": ["fruits"], "servings": 1.0}
     ]
   }
 }

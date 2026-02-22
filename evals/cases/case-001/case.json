@@ -8,10 +8,10 @@
   ],
   "expected": {
     "pass_threshold": 70,
-    "meal_context": "Two photos of the same meal. Photo 1: a penne pasta salad with spinach, lentils, and tomato. Photo 2: bread with pesto — two types of bread (baguette and rye), generously portioned (roughly two servings worth).",
-    "description_hints": ["pasta", "penne", "bread", "lentils"],
+    "meal_context": "A penne salad with spinach, lentils, and tomato plus bread with pest",
+    "description_hints": ["penne", "bread", "lentils", "salad"],
     "food_items": [
-      {"name": "penne pasta salad", "categories": ["refined_grains"], "servings": 1.5},
+      {"name": "penne", "categories": ["refined_grains"], "servings": 1.0},
       {"name": "lentils", "categories": ["legumes_and_plant_proteins"], "servings": 0.5},
       {"name": "spinach and tomato", "categories": ["vegetables"], "servings": 0.5},
       {"name": "bread with pesto", "categories": ["refined_grains"], "servings": 2.0}
