@@ -5,7 +5,7 @@ import XCTest
 final class FoodAnalysisResponseParserTests: XCTestCase {
     func testParseResponseDataParsesValidPayload() throws {
         let data = Data(
-            #"{"choices":[{"message":{"content":"{\"description\":\"Grilled salmon with rice\",\"food_items\":[{\"name\":\"Salmon\",\"categories\":[\"lean_meats_and_fish\"],\"servings\":1.0}]}"}}]}"#
+            #"{"choices":[{"message":{"content":"{\"description\":\"Grilled salmon with rice\",\"food_items\":[{\"name\":\"Salmon\",\"category\":\"lean_meats_and_fish\",\"servings\":1.0}]}"}}]}"#
                 .utf8
         )
 

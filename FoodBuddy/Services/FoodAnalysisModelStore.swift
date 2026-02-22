@@ -72,28 +72,22 @@ final class FoodAnalysisModelStore {
                 continue
             }
 
-            var insertedCategories = Set<DQSCategory>()
-            for rawCategory in analyzedItem.categories {
-                guard let category = DQSCategory(apiIdentifier: rawCategory) else {
-                    continue
-                }
-                if !insertedCategories.insert(category).inserted {
-                    continue
-                }
-
-                modelContext.insert(
-                    FoodItem(
-                        mealId: meal.id,
-                        name: name,
-                        categoryRawValue: category.rawValue,
-                        servings: analyzedItem.servings,
-                        isManual: false,
-                        createdAt: now,
-                        updatedAt: now,
-                        meal: meal
-                    )
-                )
+            guard let category = DQSCategory(apiIdentifier: analyzedItem.category) else {
+                continue
             }
+
+            modelContext.insert(
+                FoodItem(
+                    mealId: meal.id,
+                    name: name,
+                    categoryRawValue: category.rawValue,
+                    servings: analyzedItem.servings,
+                    isManual: false,
+                    createdAt: now,
+                    updatedAt: now,
+                    meal: meal
+                )
+            )
         }
 
         meal.aiDescription = description

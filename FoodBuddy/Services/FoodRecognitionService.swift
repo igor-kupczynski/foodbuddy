@@ -27,7 +27,7 @@ struct FoodAnalysisResult: Sendable, Equatable {
 
 struct AIFoodItem: Sendable, Codable, Equatable {
     let name: String
-    let categories: [String]
+    let category: String
     let servings: Double
 }
 

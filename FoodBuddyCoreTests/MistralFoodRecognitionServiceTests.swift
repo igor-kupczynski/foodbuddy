@@ -7,7 +7,7 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
     func testAnalyzeBuildsExpectedRequestJSONWithFoodSchema() async throws {
         let mock = MockHTTPTransport(
             statusCode: 200,
-            body: #"{"choices":[{"message":{"content":"{\"description\":\"Grilled salmon with rice\",\"food_items\":[{\"name\":\"Salmon\",\"categories\":[\"lean_meats_and_fish\"],\"servings\":1}]}"}}]}"#
+            body: #"{"choices":[{"message":{"content":"{\"description\":\"Grilled salmon with rice\",\"food_items\":[{\"name\":\"Salmon\",\"category\":\"lean_meats_and_fish\",\"servings\":1}]}"}}]}"#
         )
         let service = MistralFoodRecognitionService(
             apiKeyStore: StaticAPIKeyStore(key: "test-key"),
@@ -55,7 +55,7 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
     func testAnalyzeBuildsNotesOnlyRequestPayload() async throws {
         let mock = MockHTTPTransport(
             statusCode: 200,
-            body: #"{"choices":[{"message":{"content":"{\"description\":\"Oatmeal with berries\",\"food_items\":[{\"name\":\"Oatmeal\",\"categories\":[\"whole_grains\"],\"servings\":1}]}"}}]}"#
+            body: #"{"choices":[{"message":{"content":"{\"description\":\"Oatmeal with berries\",\"food_items\":[{\"name\":\"Oatmeal\",\"category\":\"whole_grains\",\"servings\":1}]}"}}]}"#
         )
         let service = MistralFoodRecognitionService(
             apiKeyStore: StaticAPIKeyStore(key: "test-key"),
@@ -77,7 +77,7 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
     func testAnalyzeParsesDescriptionAndFoodItems() async throws {
         let mock = MockHTTPTransport(
             statusCode: 200,
-            body: #"{"choices":[{"message":{"content":"{\"description\":\"Grilled salmon with rice\",\"food_items\":[{\"name\":\"Salmon\",\"categories\":[\"lean_meats_and_fish\"],\"servings\":1.0},{\"name\":\"Ice cream\",\"categories\":[\"dairy\",\"sweets\"],\"servings\":0.5}]}"}}]}"#
+            body: #"{"choices":[{"message":{"content":"{\"description\":\"Grilled salmon with rice\",\"food_items\":[{\"name\":\"Salmon\",\"category\":\"lean_meats_and_fish\",\"servings\":1.0},{\"name\":\"Ice cream\",\"category\":\"dairy\",\"servings\":0.5}]}"}}]}"#
         )
         let service = MistralFoodRecognitionService(
             apiKeyStore: StaticAPIKeyStore(key: "test-key"),
@@ -87,12 +87,12 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
         let result = try await service.analyze(images: [Data("image".utf8)], notes: nil)
         XCTAssertEqual(result.description, "Grilled salmon with rice")
         XCTAssertEqual(result.foodItems.count, 2)
-        XCTAssertEqual(result.foodItems[0].categories, ["lean_meats_and_fish"])
-        XCTAssertEqual(result.foodItems[1].categories, ["dairy", "sweets"])
+        XCTAssertEqual(result.foodItems[0].category, "lean_meats_and_fish")
+        XCTAssertEqual(result.foodItems[1].category, "dairy")
     }
 
     func testAnalyzeParsesStreamingSSEPayload() async throws {
-        let content = #"{"description":"Grilled salmon with rice","food_items":[{"name":"Salmon","categories":["lean_meats_and_fish"],"servings":1.0}]}"#
+        let content = #"{"description":"Grilled salmon with rice","food_items":[{"name":"Salmon","category":"lean_meats_and_fish","servings":1.0}]}"#
         let escapedContent = content
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
@@ -114,7 +114,7 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
         XCTAssertEqual(result.description, "Grilled salmon with rice")
         XCTAssertEqual(result.foodItems.count, 1)
         XCTAssertEqual(result.foodItems[0].name, "Salmon")
-        XCTAssertEqual(result.foodItems[0].categories, ["lean_meats_and_fish"])
+        XCTAssertEqual(result.foodItems[0].category, "lean_meats_and_fish")
     }
 
     func testAnalyzeHandlesEmptyFoodItems() async throws {
@@ -135,7 +135,7 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
     func testAnalyzeSkipsItemsWithUnknownCategoryStrings() async throws {
         let mock = MockHTTPTransport(
             statusCode: 200,
-            body: #"{"choices":[{"message":{"content":"{\"description\":\"Snack\",\"food_items\":[{\"name\":\"Unknown\",\"categories\":[\"not_real\"],\"servings\":1},{\"name\":\"Apple\",\"categories\":[\"fruits\",\"not_real\"],\"servings\":1}]}"}}]}"#
+            body: #"{"choices":[{"message":{"content":"{\"description\":\"Snack\",\"food_items\":[{\"name\":\"Unknown\",\"category\":\"not_real\",\"servings\":1},{\"name\":\"Apple\",\"category\":\"fruits\",\"servings\":1}]}"}}]}"#
         )
         let service = MistralFoodRecognitionService(
             apiKeyStore: StaticAPIKeyStore(key: "test-key"),
@@ -145,7 +145,7 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
         let result = try await service.analyze(images: [Data("image".utf8)], notes: nil)
         XCTAssertEqual(result.foodItems.count, 1)
         XCTAssertEqual(result.foodItems.first?.name, "Apple")
-        XCTAssertEqual(result.foodItems.first?.categories, ["fruits"])
+        XCTAssertEqual(result.foodItems.first?.category, "fruits")
     }
 
     func testDescribeDelegatesToAnalyze() async throws {

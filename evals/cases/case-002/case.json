@@ -8,8 +8,8 @@
     "meal_context": "Greek yogurt with banana and chia seeds",
     "description_hints": ["yogurt", "banana", "chia"],
     "food_items": [
-      {"name": "Greek yogurt", "categories": ["dairy"], "servings": 1.0},
-      {"name": "banana", "categories": ["fruits"], "servings": 1.0}
+      {"name": "Greek yogurt", "category": "dairy", "servings": 1.0},
+      {"name": "banana", "category": "fruits", "servings": 1.0}
     ]
   }
 }

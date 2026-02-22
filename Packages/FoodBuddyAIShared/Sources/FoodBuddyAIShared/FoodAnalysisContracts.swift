@@ -23,12 +23,12 @@ public struct FoodAnalysisPayload: Codable, Equatable, Sendable {
 
 public struct FoodAnalysisItem: Codable, Equatable, Sendable {
     public let name: String
-    public let categories: [String]
+    public let category: String
     public let servings: Double
 
-    public init(name: String, categories: [String], servings: Double) {
+    public init(name: String, category: String, servings: Double) {
         self.name = name
-        self.categories = categories
+        self.category = category
         self.servings = servings
     }
 }

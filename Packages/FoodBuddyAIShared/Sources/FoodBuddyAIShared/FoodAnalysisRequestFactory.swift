@@ -137,20 +137,17 @@ private struct ResponseFormat: Encodable {
                                         type: "string",
                                         description: "Specific name of the food item"
                                     ),
-                                    categories: CategoriesProperty(
-                                        type: "array",
-                                        description: "DQS categories (usually 1, sometimes 2 for double-counted foods)",
-                                        items: CategoriesItemProperty(
-                                            type: "string",
-                                            enumValues: categoryIdentifiers
-                                        )
+                                    category: CategoryProperty(
+                                        type: "string",
+                                        description: "Exactly one DQS category for this food item",
+                                        enumValues: categoryIdentifiers
                                     ),
                                     servings: DescriptionProperty(
                                         type: "number",
                                         description: "Estimated number of standard servings (0.5, 1, 1.5, 2, etc.)"
                                     )
                                 ),
-                                required: ["name", "categories", "servings"],
+                                required: ["name", "category", "servings"],
                                 additionalProperties: false
                             )
                         )
@@ -220,22 +217,18 @@ private struct FoodItemSchema: Encodable {
 
 private struct FoodItemProperties: Encodable {
     let name: DescriptionProperty
-    let categories: CategoriesProperty
+    let category: CategoryProperty
     let servings: DescriptionProperty
 }
 
-private struct CategoriesProperty: Encodable {
+private struct CategoryProperty: Encodable {
     let type: String
     let description: String
-    let items: CategoriesItemProperty
-}
-
-private struct CategoriesItemProperty: Encodable {
-    let type: String
     let enumValues: [String]
 
     enum CodingKeys: String, CodingKey {
         case type
+        case description
         case enumValues = "enum"
     }
 }

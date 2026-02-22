@@ -11,10 +11,10 @@
     "meal_context": "A penne salad with spinach, lentils, and tomato plus bread with pest",
     "description_hints": ["penne", "bread", "lentils", "salad"],
     "food_items": [
-      {"name": "penne", "categories": ["refined_grains"], "servings": 1.0},
-      {"name": "lentils", "categories": ["legumes_and_plant_proteins"], "servings": 0.5},
-      {"name": "spinach and tomato", "categories": ["vegetables"], "servings": 0.5},
-      {"name": "bread with pesto", "categories": ["refined_grains"], "servings": 2.0}
+      {"name": "penne", "category": "refined_grains", "servings": 1.0},
+      {"name": "lentils", "category": "legumes_and_plant_proteins", "servings": 0.5},
+      {"name": "spinach and tomato", "category": "vegetables", "servings": 0.5},
+      {"name": "bread with pesto", "category": "refined_grains", "servings": 2.0}
     ]
   }
 }

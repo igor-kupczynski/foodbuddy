@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor
 final class FoodAnalysisModelStoreTests: XCTestCase {
-    func testMarkCompletedWithFoodItemsMapsSnakeCaseAndExpandsDoubleCountedItems() throws {
+    func testMarkCompletedWithFoodItemsMapsSingleCategory() throws {
         let harness = try ModelStoreHarness.make()
         let meal = try harness.makeMeal()
 
@@ -12,8 +12,9 @@ final class FoodAnalysisModelStoreTests: XCTestCase {
             mealID: meal.id,
             description: "Sweetened yogurt and berries",
             foodItems: [
-                AIFoodItem(name: "Sweetened yogurt", categories: ["dairy", "sweets"], servings: 1),
-                AIFoodItem(name: "Blueberries", categories: ["fruits"], servings: 0.5)
+                AIFoodItem(name: "Sweetened yogurt", category: "dairy", servings: 1),
+                AIFoodItem(name: "Yogurt sugar", category: "sweets", servings: 1),
+                AIFoodItem(name: "Blueberries", category: "fruits", servings: 0.5)
             ]
         )
 
@@ -33,9 +34,9 @@ final class FoodAnalysisModelStoreTests: XCTestCase {
             mealID: meal.id,
             description: "Mixed snack",
             foodItems: [
-                AIFoodItem(name: "Mystery", categories: ["unknown"], servings: 1),
-                AIFoodItem(name: "  ", categories: ["fruits"], servings: 1),
-                AIFoodItem(name: "Apple", categories: ["fruits", "unknown"], servings: 1)
+                AIFoodItem(name: "Mystery", category: "unknown", servings: 1),
+                AIFoodItem(name: "  ", category: "fruits", servings: 1),
+                AIFoodItem(name: "Apple", category: "fruits", servings: 1)
             ]
         )
 
@@ -75,7 +76,7 @@ final class FoodAnalysisModelStoreTests: XCTestCase {
         try store.markCompletedWithFoodItems(
             mealID: meal.id,
             description: "Re-analyzed",
-            foodItems: [AIFoodItem(name: "Soup", categories: ["vegetables"], servings: 1)]
+            foodItems: [AIFoodItem(name: "Soup", category: "vegetables", servings: 1)]
         )
 
         let storedMeal = try XCTUnwrap(try harness.fetchMeal(id: meal.id))

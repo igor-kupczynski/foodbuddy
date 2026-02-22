@@ -13,8 +13,8 @@ final class FoodAnalysisCoordinatorTests: XCTestCase {
                 FoodAnalysisResult(
                     description: "Pasta with tomato sauce",
                     foodItems: [
-                        AIFoodItem(name: "Pasta", categories: ["whole_grains"], servings: 1),
-                        AIFoodItem(name: "Sauce", categories: ["vegetables"], servings: 1)
+                        AIFoodItem(name: "Pasta", category: "whole_grains", servings: 1),
+                        AIFoodItem(name: "Sauce", category: "vegetables", servings: 1)
                     ]
                 )
             )
@@ -48,7 +48,7 @@ final class FoodAnalysisCoordinatorTests: XCTestCase {
             behavior: .success(
                 FoodAnalysisResult(
                     description: "Oatmeal with berries",
-                    foodItems: [AIFoodItem(name: "Oatmeal", categories: ["whole_grains"], servings: 1)]
+                    foodItems: [AIFoodItem(name: "Oatmeal", category: "whole_grains", servings: 1)]
                 )
             )
         )
@@ -92,7 +92,7 @@ final class FoodAnalysisCoordinatorTests: XCTestCase {
             behavior: .success(
                 FoodAnalysisResult(
                     description: "Meal 1",
-                    foodItems: [AIFoodItem(name: "Yogurt", categories: ["dairy"], servings: 1)]
+                    foodItems: [AIFoodItem(name: "Yogurt", category: "dairy", servings: 1)]
                 )
             )
         )
@@ -115,7 +115,7 @@ final class FoodAnalysisCoordinatorTests: XCTestCase {
             behavior: .success(
                 FoodAnalysisResult(
                     description: "Meal 2",
-                    foodItems: [AIFoodItem(name: "Donut", categories: ["fried_foods"], servings: 1)]
+                    foodItems: [AIFoodItem(name: "Donut", category: "fried_foods", servings: 1)]
                 )
             )
         )

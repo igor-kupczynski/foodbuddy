@@ -201,7 +201,7 @@ private struct EvalExpected: Codable {
 
 private struct ExpectedFoodItem: Codable {
     let name: String
-    let categories: [String]
+    let category: String
     let servings: Double
 }
 
@@ -819,7 +819,7 @@ private func buildJudgePrompt(expected: EvalExpected, actualPayload: FoodAnalysi
     var expectedItemsJSON = "[]"
     if let items = expected.foodItems {
         let itemDicts = items.map { item -> [String: Any] in
-            ["name": item.name, "categories": item.categories, "servings": item.servings]
+            ["name": item.name, "category": item.category, "servings": item.servings]
         }
         if let data = try? JSONSerialization.data(withJSONObject: itemDicts, options: [.prettyPrinted, .sortedKeys]),
            let str = String(data: data, encoding: .utf8) {
@@ -829,7 +829,7 @@ private func buildJudgePrompt(expected: EvalExpected, actualPayload: FoodAnalysi
 
     // Serialize actual food items
     let actualItemDicts = actualPayload.foodItems.map { item -> [String: Any] in
-        ["name": item.name, "categories": item.categories, "servings": item.servings]
+        ["name": item.name, "category": item.category, "servings": item.servings]
     }
     var actualItemsJSON = "[]"
     if let data = try? JSONSerialization.data(withJSONObject: actualItemDicts, options: [.prettyPrinted, .sortedKeys]),
@@ -1022,21 +1022,17 @@ private func validateSchema(object: Any, allowedCategories: Set<String>) -> Bool
     }
 
     for item in foodItems {
-        let expectedItemKeys: Set<String> = ["name", "categories", "servings"]
+        let expectedItemKeys: Set<String> = ["name", "category", "servings"]
         guard Set(item.keys) == expectedItemKeys else {
             return false
         }
 
         guard let name = item["name"] as? String,
               !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              let categories = item["categories"] as? [String],
-              !categories.isEmpty,
+              let category = item["category"] as? String,
+              allowedCategories.contains(category),
               let servings = item["servings"] as? Double,
               servings > 0 else {
-            return false
-        }
-
-        for category in categories where !allowedCategories.contains(category) {
             return false
         }
     }

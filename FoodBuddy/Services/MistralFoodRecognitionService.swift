@@ -233,25 +233,14 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
                 continue
             }
 
-            var uniqueCategories = Set<String>()
-            var categories: [String] = []
-            for rawCategory in item.categories {
-                guard let category = DQSCategory(apiIdentifier: rawCategory) else {
-                    continue
-                }
-                if uniqueCategories.insert(category.apiIdentifier).inserted {
-                    categories.append(category.apiIdentifier)
-                }
-            }
-
-            guard !categories.isEmpty else {
+            guard DQSCategory(apiIdentifier: item.category) != nil else {
                 continue
             }
 
             normalized.append(
                 AIFoodItem(
                     name: name,
-                    categories: categories,
+                    category: item.category,
                     servings: item.servings
                 )
             )
