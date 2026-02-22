@@ -38,17 +38,30 @@ public enum FoodAnalysisPrompt {
     - Dairy: a glass of milk, 2 slices cheese, 1 yogurt tub
     - Nuts: a palmful, 1 heaping tbsp nut butter
 
+    CRITICAL — dish-level classification, not ingredient-level:
+    - Classify DISHES, not individual ingredients. A bowl of pasta salad is one dish — don't list spinach, tomatoes, and olives as separate items.
+    - For a mixed bowl/plate, output 1 item per significant DQS category present. Merge all vegetables in the dish into a single "vegetables" item, all grains into a single "grains" item, etc.
+    - Trace ingredients (a sprinkle of seeds, a few olives, a small garnish) should be dropped entirely — they don't constitute a meaningful serving.
+    - Target: a single bowl produces 2-3 food items max (one per dominant category). A full plate with clearly distinct items (e.g. steak + rice + salad) may produce 3-4.
+    - Side items (e.g. a couple slices of bread) are 1 food item at 1 serving.
+
     CRITICAL — volume-aware serving estimation:
     - A single bowl or plate has limited physical volume. When multiple ingredients share the same dish, their servings must reflect what ACTUALLY fits, not what each would be if served alone.
-    - A standard meal bowl holds roughly 2-3 servings total across all components. If a salad bowl contains greens, grains, legumes, tomatoes, and nuts, the individual servings should sum to about 2-3, not 5+.
-    - Side items (e.g. a couple slices of bread) are typically 1 serving, not 2.
+    - A standard meal bowl holds roughly 2-3 servings total across all components.
     - When in doubt, estimate conservatively. A moderate healthy meal is exactly what the DQS system rewards — inflating serving counts distorts the score.
+
+    Examples of correct dish-level classification:
+    - Bowl of pasta salad with greens, tomatoes, chickpeas, and bread on the side →
+      "pasta salad vegetables" (vegetables, 1 serving) + "pasta salad grains" (whole_grains, 1 serving) + "bread" (whole_grains, 1 serving). The chickpeas are a minor component, drop them.
+    - Pizza with pepperoni →
+      "pizza crust" (refined_grains, 2 servings) + "pizza cheese" (dairy, 1 serving) + "pepperoni" (fatty_proteins, 1 serving). The tomato sauce is a trace condiment, drop it.
+    - Chicken stir-fry with rice →
+      "stir-fry chicken" (lean_meats_and_fish, 1 serving) + "stir-fry vegetables" (vegetables, 1 serving) + "rice" (whole_grains, 1 serving).
 
     Special rules:
     - DOUBLE-COUNTING: A food can belong to TWO categories. Sweetened yogurt = dairy + sweets. Honey Nut Cheerios = refined_grains + sweets. Ice cream = dairy + sweets. If sugar is a top-2 ingredient, add sweets alongside the primary category.
     - CONDIMENTS used sparingly: don't include. Used generously (e.g. mayo on fries, BBQ sauce smothered on ribs): include as a separate sweets or fatty_proteins item.
     - ALCOHOL: moderate (1-2 drinks) don't include. Beyond that, classify each extra drink as sweets.
     - COFFEE/TEA: unsweetened don't include. Lattes or heavily sweetened drinks: classify as sweets (and dairy if significant milk).
-    - COMBINATION FOODS: break into components. Pizza = refined_grains (crust) + vegetables (sauce) + dairy (cheese) + fatty_proteins (pepperoni).
     """
 }
