@@ -3,6 +3,7 @@ import FoodBuddyAIShared
 import Foundation
 import NIOCore
 import NIOFoundationCompat
+import NIOHTTP1
 
 // MARK: - Transport protocol
 
@@ -14,7 +15,13 @@ protocol MistralHTTPTransport: Sendable {
         headers: [(name: String, value: String)],
         body: Data,
         timeoutSeconds: TimeInterval
-    ) async throws -> (statusCode: Int, bodyLines: AsyncThrowingStream<String, Error>)
+    ) async throws -> MistralStreamingResponse
+}
+
+struct MistralStreamingResponse: Sendable {
+    let statusCode: Int
+    let headers: [String: String]
+    let bodyLines: AsyncThrowingStream<String, Error>
 }
 
 // MARK: - Production transport (AsyncHTTPClient, HTTP/2 only)
@@ -27,7 +34,7 @@ struct AsyncHTTPClientTransport: MistralHTTPTransport {
         headers: [(name: String, value: String)],
         body: Data,
         timeoutSeconds: TimeInterval
-    ) async throws -> (statusCode: Int, bodyLines: AsyncThrowingStream<String, Error>) {
+    ) async throws -> MistralStreamingResponse {
         let httpClient = HTTPClient(eventLoopGroupProvider: .singleton)
 
         var request = HTTPClientRequest(url: url)
@@ -39,6 +46,7 @@ struct AsyncHTTPClientTransport: MistralHTTPTransport {
 
         let response = try await httpClient.execute(request, timeout: .seconds(Int64(timeoutSeconds)))
         let statusCode = Int(response.status.code)
+        let responseHeaders = normalizeHeaders(response.headers)
 
         let stream = AsyncThrowingStream<String, Error> { continuation in
             let task = Task {
@@ -61,7 +69,26 @@ struct AsyncHTTPClientTransport: MistralHTTPTransport {
             continuation.onTermination = { _ in task.cancel() }
         }
 
-        return (statusCode, stream)
+        return MistralStreamingResponse(
+            statusCode: statusCode,
+            headers: responseHeaders,
+            bodyLines: stream
+        )
+    }
+
+    private func normalizeHeaders(_ headers: HTTPHeaders) -> [String: String] {
+        var normalized: [String: String] = [:]
+
+        for header in headers {
+            let name = header.name.lowercased()
+            if let existing = normalized[name] {
+                normalized[name] = "\(existing), \(header.value)"
+            } else {
+                normalized[name] = header.value
+            }
+        }
+
+        return normalized
     }
 }
 
@@ -73,21 +100,39 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
         static let model = "mistral-large-latest"
         static let timeoutSeconds: TimeInterval = 240
         static let responseMaxTokens = 400
-        static let maxAttempts = 3
-        static let retryBaseDelayMs: UInt64 = 500
+        static let maxAttempts = 4
+        static let retryBaseDelayMs: UInt64 = 2_000
+        static let retryMaxDelayMs: UInt64 = 30_000
+        static let retryJitterMaxMs: UInt64 = 250
         static let errorPreviewMaxChars = 2_000
         static let errorPreviewMaxLines = 8
     }
 
     private let apiKeyStore: any MistralAPIKeyStoring
+    private let aiSettingsStore: any MistralAISettingsStoring
     private let transport: any MistralHTTPTransport
+    private let nowProvider: @Sendable () -> Date
+    private let retryJitterMillisecondsProvider: @Sendable () -> UInt64
+    private let sleepMilliseconds: @Sendable (UInt64) async -> Void
 
     init(
         apiKeyStore: any MistralAPIKeyStoring,
-        transport: any MistralHTTPTransport = AsyncHTTPClientTransport()
+        aiSettingsStore: any MistralAISettingsStoring = UserDefaultsMistralAISettingsStore(),
+        transport: any MistralHTTPTransport = AsyncHTTPClientTransport(),
+        nowProvider: @escaping @Sendable () -> Date = Date.init,
+        retryJitterMillisecondsProvider: @escaping @Sendable () -> UInt64 = {
+            UInt64.random(in: 0...250)
+        },
+        sleepMilliseconds: @escaping @Sendable (UInt64) async -> Void = { delayMs in
+            try? await Task.sleep(nanoseconds: delayMs * 1_000_000)
+        }
     ) {
         self.apiKeyStore = apiKeyStore
+        self.aiSettingsStore = aiSettingsStore
         self.transport = transport
+        self.nowProvider = nowProvider
+        self.retryJitterMillisecondsProvider = retryJitterMillisecondsProvider
+        self.sleepMilliseconds = sleepMilliseconds
     }
 
     func analyze(images: [Data], notes: String?) async throws -> FoodAnalysisResult {
@@ -95,12 +140,20 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
         guard !key.isEmpty else {
             throw FoodRecognitionServiceError.noAPIKey
         }
+        let aiSettings = aiSettingsStore.settings()
+        let aiPreprocessor = AIAnalysisImagePreprocessor(
+            maxLongEdge: CGFloat(aiSettings.imageLongEdge),
+            compressionQuality: aiSettings.compressionQuality
+        )
+        let processedImages = images.map(aiPreprocessor.preprocessForAI)
+        let requestImages = processedImages.map(\.jpegData)
+        let requestImageBytes = requestImages.map(\.count)
 
         let requestBody: Data
         do {
             requestBody = try FoodAnalysisRequestFactory.makeJSONData(
                 model: Constants.model,
-                images: images,
+                images: requestImages,
                 notes: notes,
                 categoryIdentifiers: FoodAnalysisCategories.all,
                 stream: true,
@@ -115,25 +168,67 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
             ("Authorization", "Bearer \(key)"),
             ("Accept", "text/event-stream"),
         ]
+        let requestBodyBytes = requestBody.count
+        var appliedRetryDelayMs: [UInt64] = []
 
         for attempt in 1...Constants.maxAttempts {
             do {
-                let (statusCode, bodyLines) = try await transport.streamingPOST(
+                let response = try await transport.streamingPOST(
                     url: Constants.endpointURL,
                     headers: headers,
                     body: requestBody,
                     timeoutSeconds: Constants.timeoutSeconds
                 )
 
-                guard (200..<300).contains(statusCode) else {
-                    let bodyPreview = await collectBodyPreview(from: bodyLines)
+                guard (200..<300).contains(response.statusCode) else {
+                    let bodyPreview = await collectBodyPreview(from: response.bodyLines)
+                    let responseTelemetry = HTTPResponseTelemetry(headers: response.headers)
+
+                    if response.statusCode == 429 {
+                        let retryAfterRawValue = response.headers["retry-after"]
+                        let delayMs = retryDelayMilliseconds(
+                            attempt: attempt,
+                            retryAfterRawValue: retryAfterRawValue
+                        )
+                        let nextEligibleRetryAt = nowProvider()
+                            .addingTimeInterval(TimeInterval(delayMs) / 1_000)
+
+                        if attempt < Constants.maxAttempts {
+                            appliedRetryDelayMs.append(delayMs)
+                            await sleep(milliseconds: delayMs)
+                            continue
+                        }
+
+                        throw FoodRecognitionServiceError.rateLimited(
+                            FoodRecognitionRateLimitTelemetry(
+                                statusCode: response.statusCode,
+                                responseBody: bodyPreview,
+                                responseTelemetry: responseTelemetry,
+                                requestImageCount: requestImages.count,
+                                requestImageBytes: requestImageBytes,
+                                requestBodyBytes: requestBodyBytes,
+                                model: Constants.model,
+                                imageLongEdge: aiSettings.imageLongEdge,
+                                imageQuality: aiSettings.imageQuality,
+                                attemptCount: attempt,
+                                maxAttempts: Constants.maxAttempts,
+                                appliedRetryDelayMs: appliedRetryDelayMs,
+                                retryAfterRawValue: retryAfterRawValue,
+                                nextEligibleRetryAt: nextEligibleRetryAt
+                            )
+                        )
+                    }
+
                     let error = FoodRecognitionServiceError.httpError(
-                        statusCode: statusCode,
-                        responseBody: bodyPreview
+                        statusCode: response.statusCode,
+                        responseBody: bodyPreview,
+                        responseTelemetry: responseTelemetry
                     )
 
-                    if shouldRetry(error: error, attempt: attempt) {
-                        await sleepBeforeRetry(attempt: attempt)
+                    if shouldRetry(statusCode: response.statusCode, attempt: attempt) {
+                        let delayMs = retryDelayMilliseconds(attempt: attempt)
+                        appliedRetryDelayMs.append(delayMs)
+                        await sleep(milliseconds: delayMs)
                         continue
                     }
                     throw error
@@ -143,17 +238,13 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
                 rawLines.reserveCapacity(128)
 
                 var streamAccumulator = MistralStreamAccumulator()
-                for try await line in bodyLines {
+                for try await line in response.bodyLines {
                     rawLines.append(line)
                     try streamAccumulator.consume(line: line)
                 }
 
                 return try parseStreamResult(accumulator: streamAccumulator, rawLines: rawLines)
             } catch let error as FoodRecognitionServiceError {
-                if shouldRetry(error: error, attempt: attempt) {
-                    await sleepBeforeRetry(attempt: attempt)
-                    continue
-                }
                 throw error
             } catch {
                 let errorDesc = String(describing: error)
@@ -163,7 +254,9 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
                     || errorDesc.contains("remoteConnectionClosed")
 
                 if isRetryable, attempt < Constants.maxAttempts {
-                    await sleepBeforeRetry(attempt: attempt)
+                    let delayMs = retryDelayMilliseconds(attempt: attempt)
+                    appliedRetryDelayMs.append(delayMs)
+                    await sleep(milliseconds: delayMs)
                     continue
                 }
                 throw FoodRecognitionServiceError.networkError
@@ -249,23 +342,66 @@ struct MistralFoodRecognitionService: FoodRecognitionService, @unchecked Sendabl
         return normalized
     }
 
-    private func shouldRetry(error: FoodRecognitionServiceError, attempt: Int) -> Bool {
+    private func shouldRetry(statusCode: Int, attempt: Int) -> Bool {
         guard attempt < Constants.maxAttempts else {
             return false
         }
 
-        switch error {
-        case .httpError(let statusCode, _):
-            return [408, 429, 500, 502, 503, 504].contains(statusCode)
-        default:
-            return false
-        }
+        return [408, 500, 502, 503, 504].contains(statusCode)
     }
 
-    private func sleepBeforeRetry(attempt: Int) async {
+    private func retryDelayMilliseconds(
+        attempt: Int,
+        retryAfterRawValue: String? = nil
+    ) -> UInt64 {
+        if let retryAfterRawValue,
+           let retryAfterMilliseconds = parseRetryAfterMilliseconds(rawValue: retryAfterRawValue) {
+            return clampRetryDelay(milliseconds: retryAfterMilliseconds)
+        }
+
         let exponent = UInt64(max(0, attempt - 1))
-        let delayMs = Constants.retryBaseDelayMs * (1 << exponent)
-        try? await Task.sleep(nanoseconds: delayMs * 1_000_000)
+        let baseDelayMs = Constants.retryBaseDelayMs * (1 << exponent)
+        let jitterMs = retryJitterMillisecondsProvider()
+        return clampRetryDelay(milliseconds: baseDelayMs.saturatingAdd(jitterMs))
+    }
+
+    private func clampRetryDelay(milliseconds: UInt64) -> UInt64 {
+        min(milliseconds, Constants.retryMaxDelayMs)
+    }
+
+    private func parseRetryAfterMilliseconds(rawValue: String) -> UInt64? {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let seconds = TimeInterval(trimmed), seconds >= 0 {
+            return UInt64((seconds * 1_000).rounded())
+        }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "EEE',' dd MMM yyyy HH':'mm':'ss z"
+
+        guard let retryDate = formatter.date(from: trimmed) else {
+            return nil
+        }
+
+        let interval = retryDate.timeIntervalSince(nowProvider())
+        guard interval > 0 else {
+            return 0
+        }
+
+        return UInt64((interval * 1_000).rounded())
+    }
+
+    private func sleep(milliseconds delayMs: UInt64) async {
+        await sleepMilliseconds(delayMs)
+    }
+}
+
+private extension UInt64 {
+    func saturatingAdd(_ other: UInt64) -> UInt64 {
+        let (value, overflow) = addingReportingOverflow(other)
+        return overflow ? UInt64.max : value
     }
 }
 

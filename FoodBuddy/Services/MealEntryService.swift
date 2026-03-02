@@ -147,6 +147,7 @@ final class MealEntryService: MealEntryIngesting {
         mealService.touch(meal)
         meal.userNotes = notes
         meal.aiAnalysisStatus = aiAnalysisStatus
+        meal.aiAnalysisNextRetryAt = nil
         meal.aiAnalysisErrorDetails = nil
         if aiAnalysisStatus == .pending {
             meal.aiDescription = nil
@@ -165,6 +166,8 @@ final class MealEntryService: MealEntryIngesting {
     func queueMealForAnalysis(_ meal: Meal) throws {
         meal.aiDescription = nil
         meal.aiAnalysisStatus = .pending
+        meal.aiAnalysisNextRetryAt = nil
+        meal.aiAnalysisErrorDetails = nil
         mealService.touch(meal)
         try save()
     }
@@ -207,6 +210,8 @@ final class MealEntryService: MealEntryIngesting {
             mealService.touch(meal)
             meal.userNotes = normalizedNotes(userNotes)
             meal.aiAnalysisStatus = aiAnalysisStatus
+            meal.aiAnalysisNextRetryAt = nil
+            meal.aiAnalysisErrorDetails = nil
             if aiAnalysisStatus == .pending {
                 meal.aiDescription = nil
             }

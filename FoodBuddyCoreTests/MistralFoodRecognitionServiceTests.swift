@@ -9,10 +9,7 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
             statusCode: 200,
             body: #"{"choices":[{"message":{"content":"{\"description\":\"Grilled salmon with rice\",\"food_items\":[{\"name\":\"Salmon\",\"category\":\"lean_meats_and_fish\",\"servings\":1}]}"}}]}"#
         )
-        let service = MistralFoodRecognitionService(
-            apiKeyStore: StaticAPIKeyStore(key: "test-key"),
-            transport: mock
-        )
+        let service = makeService(transport: mock)
 
         let firstImage = Data("first".utf8)
         let secondImage = Data("second".utf8)
@@ -57,10 +54,7 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
             statusCode: 200,
             body: #"{"choices":[{"message":{"content":"{\"description\":\"Oatmeal with berries\",\"food_items\":[{\"name\":\"Oatmeal\",\"category\":\"whole_grains\",\"servings\":1}]}"}}]}"#
         )
-        let service = MistralFoodRecognitionService(
-            apiKeyStore: StaticAPIKeyStore(key: "test-key"),
-            transport: mock
-        )
+        let service = makeService(transport: mock)
 
         _ = try await service.analyze(images: [], notes: "oatmeal with blueberries")
 
@@ -79,10 +73,7 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
             statusCode: 200,
             body: #"{"choices":[{"message":{"content":"{\"description\":\"Grilled salmon with rice\",\"food_items\":[{\"name\":\"Salmon\",\"category\":\"lean_meats_and_fish\",\"servings\":1.0},{\"name\":\"Ice cream\",\"category\":\"dairy\",\"servings\":0.5}]}"}}]}"#
         )
-        let service = MistralFoodRecognitionService(
-            apiKeyStore: StaticAPIKeyStore(key: "test-key"),
-            transport: mock
-        )
+        let service = makeService(transport: mock)
 
         let result = try await service.analyze(images: [Data("image".utf8)], notes: nil)
         XCTAssertEqual(result.description, "Grilled salmon with rice")
@@ -105,10 +96,7 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
         ].joined(separator: "\n")
 
         let mock = MockHTTPTransport(statusCode: 200, body: body)
-        let service = MistralFoodRecognitionService(
-            apiKeyStore: StaticAPIKeyStore(key: "test-key"),
-            transport: mock
-        )
+        let service = makeService(transport: mock)
 
         let result = try await service.analyze(images: [Data("image".utf8)], notes: nil)
         XCTAssertEqual(result.description, "Grilled salmon with rice")
@@ -122,10 +110,7 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
             statusCode: 200,
             body: #"{"choices":[{"message":{"content":"{\"description\":\"Black coffee\",\"food_items\":[]}"}}]}"#
         )
-        let service = MistralFoodRecognitionService(
-            apiKeyStore: StaticAPIKeyStore(key: "test-key"),
-            transport: mock
-        )
+        let service = makeService(transport: mock)
 
         let result = try await service.analyze(images: [Data("image".utf8)], notes: nil)
         XCTAssertEqual(result.description, "Black coffee")
@@ -137,10 +122,7 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
             statusCode: 200,
             body: #"{"choices":[{"message":{"content":"{\"description\":\"Snack\",\"food_items\":[{\"name\":\"Unknown\",\"category\":\"not_real\",\"servings\":1},{\"name\":\"Apple\",\"category\":\"fruits\",\"servings\":1}]}"}}]}"#
         )
-        let service = MistralFoodRecognitionService(
-            apiKeyStore: StaticAPIKeyStore(key: "test-key"),
-            transport: mock
-        )
+        let service = makeService(transport: mock)
 
         let result = try await service.analyze(images: [Data("image".utf8)], notes: nil)
         XCTAssertEqual(result.foodItems.count, 1)
@@ -153,10 +135,7 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
             statusCode: 200,
             body: #"{"choices":[{"message":{"content":"{\"description\":\"Toast and eggs\",\"food_items\":[]}"}}]}"#
         )
-        let service = MistralFoodRecognitionService(
-            apiKeyStore: StaticAPIKeyStore(key: "test-key"),
-            transport: mock
-        )
+        let service = makeService(transport: mock)
 
         let description = try await service.describe(images: [Data("image".utf8)], notes: nil)
         XCTAssertEqual(description, "Toast and eggs")
@@ -173,10 +152,7 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
 
         for body in failingBodies {
             let mock = MockHTTPTransport(statusCode: 200, body: body)
-            let service = MistralFoodRecognitionService(
-                apiKeyStore: StaticAPIKeyStore(key: "test-key"),
-                transport: mock
-            )
+            let service = makeService(transport: mock)
 
             do {
                 _ = try await service.analyze(images: [Data("image".utf8)], notes: nil)
@@ -200,14 +176,11 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
         mock.handler = {
             attemptCount += 1
             if attemptCount == 1 {
-                return (502, #"{"error":"temporary"}"#)
+                return (502, [:], #"{"error":"temporary"}"#)
             }
-            return (200, #"{"choices":[{"message":{"content":"{\"description\":\"Retry recovered\",\"food_items\":[]}"}}]}"#)
+            return (200, [:], #"{"choices":[{"message":{"content":"{\"description\":\"Retry recovered\",\"food_items\":[]}"}}]}"#)
         }
-        let service = MistralFoodRecognitionService(
-            apiKeyStore: StaticAPIKeyStore(key: "test-key"),
-            transport: mock
-        )
+        let service = makeService(transport: mock)
 
         let result = try await service.analyze(images: [Data("image".utf8)], notes: nil)
         XCTAssertEqual(result.description, "Retry recovered")
@@ -215,11 +188,99 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
         XCTAssertEqual(mock.requests.count, 2)
     }
 
-    func testAnalyzeWithoutAPIKeyThrowsNoAPIKey() async {
-        let service = MistralFoodRecognitionService(
-            apiKeyStore: StaticAPIKeyStore(key: nil),
-            transport: MockHTTPTransport()
+    func testAnalyzeUsesConfiguredAIImagePayloadSettingsToReduceRequestBytes() async throws {
+        let largeImage = try makeDetailedJPEGData(width: 2200, height: 1600)
+
+        let defaultTransport = MockHTTPTransport(
+            statusCode: 200,
+            body: #"{"choices":[{"message":{"content":"{\"description\":\"Default payload\",\"food_items\":[]}"}}]}"#
         )
+        let reducedTransport = MockHTTPTransport(
+            statusCode: 200,
+            body: #"{"choices":[{"message":{"content":"{\"description\":\"Reduced payload\",\"food_items\":[]}"}}]}"#
+        )
+
+        let defaultService = makeService(
+            transport: defaultTransport,
+            settings: MistralAISettings(imageLongEdge: 1600, imageQuality: 75)
+        )
+        let reducedService = makeService(
+            transport: reducedTransport,
+            settings: MistralAISettings(imageLongEdge: 1024, imageQuality: 50)
+        )
+
+        _ = try await defaultService.analyze(images: [largeImage], notes: "context")
+        _ = try await reducedService.analyze(images: [largeImage], notes: "context")
+
+        let defaultRequest = try XCTUnwrap(defaultTransport.requests.first)
+        let reducedRequest = try XCTUnwrap(reducedTransport.requests.first)
+
+        XCTAssertLessThan(reducedRequest.body.count, defaultRequest.body.count)
+    }
+
+    func testAnalyzeRetries429UsingRetryAfterAndThenSucceeds() async throws {
+        let mock = MockHTTPTransport()
+        var attemptCount = 0
+        mock.handler = {
+            attemptCount += 1
+            if attemptCount < 3 {
+                return (429, ["retry-after": "0", "x-ratelimit-remaining": "0"], #"{"error":"rate limited"}"#)
+            }
+            return (200, [:], #"{"choices":[{"message":{"content":"{\"description\":\"Recovered after rate limit\",\"food_items\":[]}"}}]}"#)
+        }
+
+        let service = makeService(transport: mock)
+        let result = try await service.analyze(images: [Data("image".utf8)], notes: "context")
+
+        XCTAssertEqual(result.description, "Recovered after rate limit")
+        XCTAssertEqual(mock.requests.count, 3)
+    }
+
+    func testAnalyzeExhausted429ThrowsRateLimitedTelemetry() async {
+        let fixedNow = Date(timeIntervalSince1970: 1_700_000_000)
+        let mock = MockHTTPTransport(
+            statusCode: 429,
+            headers: [
+                "retry-after": "120",
+                "x-ratelimit-remaining": "0",
+                "cf-ray": "abc123",
+            ],
+            body: #"{"error":"rate limited"}"#
+        )
+        let service = makeService(transport: mock, now: fixedNow)
+
+        do {
+            _ = try await service.analyze(images: [Data("image".utf8), Data("second".utf8)], notes: "context")
+            XCTFail("Expected rateLimited error")
+        } catch let error as FoodRecognitionServiceError {
+            switch error {
+            case .rateLimited(let telemetry):
+                XCTAssertEqual(telemetry.statusCode, 429)
+                XCTAssertEqual(telemetry.requestImageCount, 2)
+                XCTAssertEqual(telemetry.requestImageBytes.count, 2)
+                XCTAssertEqual(telemetry.attemptCount, 4)
+                XCTAssertEqual(telemetry.maxAttempts, 4)
+                XCTAssertEqual(telemetry.appliedRetryDelayMs, [30_000, 30_000, 30_000])
+                XCTAssertEqual(telemetry.retryAfterRawValue, "120")
+                XCTAssertEqual(telemetry.imageLongEdge, 1024)
+                XCTAssertEqual(telemetry.imageQuality, 75)
+                XCTAssertEqual(
+                    telemetry.nextEligibleRetryAt,
+                    fixedNow.addingTimeInterval(30)
+                )
+                XCTAssertEqual(telemetry.responseTelemetry.headers["x-ratelimit-remaining"], "0")
+                XCTAssertEqual(telemetry.responseTelemetry.headers["cf-ray"], "abc123")
+                XCTAssertEqual(mock.requests.count, 4)
+            default:
+                XCTFail("Expected rateLimited, got \(error)")
+            }
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testAnalyzeWithoutAPIKeyThrowsNoAPIKey() async {
+        let service = makeService(apiKey: nil, transport: MockHTTPTransport())
 
         do {
             _ = try await service.analyze(images: [Data("image".utf8)], notes: nil)
@@ -232,10 +293,7 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
     }
 
     func testAnalyzeWithoutImagesAndNotesThrowsDecodingError() async {
-        let service = MistralFoodRecognitionService(
-            apiKeyStore: StaticAPIKeyStore(key: "test-key"),
-            transport: MockHTTPTransport()
-        )
+        let service = makeService(transport: MockHTTPTransport())
 
         do {
             _ = try await service.analyze(images: [], notes: nil)
@@ -259,25 +317,63 @@ final class MistralFoodRecognitionServiceTests: XCTestCase {
 
     private func assertHTTPError(statusCode: Int) async throws {
         let mock = MockHTTPTransport(statusCode: statusCode, body: #"{"error":"x"}"#)
-        let service = MistralFoodRecognitionService(
-            apiKeyStore: StaticAPIKeyStore(key: "test-key"),
-            transport: mock
-        )
+        let service = makeService(transport: mock)
 
         do {
             _ = try await service.analyze(images: [Data("image".utf8)], notes: nil)
             XCTFail("Expected httpError")
         } catch let error as FoodRecognitionServiceError {
             switch error {
-            case .httpError(let code, let body):
+            case .httpError(let code, let body, let telemetry):
                 XCTAssertEqual(code, statusCode)
                 XCTAssertNotNil(body)
+                XCTAssertNotNil(telemetry)
             default:
                 XCTFail("Expected httpError, got \(error)")
             }
         } catch {
             XCTFail("Unexpected error: \(error)")
         }
+    }
+
+    private func makeService(
+        apiKey: String? = "test-key",
+        transport: any MistralHTTPTransport,
+        now: Date = Date(timeIntervalSince1970: 1_700_000_000),
+        settings: MistralAISettings = MistralAISettings()
+    ) -> MistralFoodRecognitionService {
+        MistralFoodRecognitionService(
+            apiKeyStore: StaticAPIKeyStore(key: apiKey),
+            aiSettingsStore: StaticAISettingsStore(storedSettings: settings),
+            transport: transport,
+            nowProvider: { now },
+            retryJitterMillisecondsProvider: { 0 },
+            sleepMilliseconds: { _ in }
+        )
+    }
+
+    private func makeDetailedJPEGData(width: CGFloat, height: CGFloat) throws -> Data {
+        #if canImport(UIKit)
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: width, height: height))
+        let image = renderer.image { context in
+            for index in stride(from: 0, to: Int(height), by: 16) {
+                let hue = CGFloat(index % 256) / 255
+                UIColor(hue: hue, saturation: 0.8, brightness: 0.9, alpha: 1).setFill()
+                context.fill(CGRect(x: 0, y: CGFloat(index), width: width, height: 16))
+            }
+        }
+        return try XCTUnwrap(image.jpegData(compressionQuality: 0.95))
+        #elseif canImport(AppKit)
+        let image = NSImage(size: NSSize(width: width, height: height))
+        image.lockFocus()
+        for index in stride(from: 0, to: Int(height), by: 16) {
+            let hue = CGFloat(index % 256) / 255
+            NSColor(calibratedHue: hue, saturation: 0.8, brightness: 0.9, alpha: 1).setFill()
+            NSBezierPath(rect: NSRect(x: 0, y: CGFloat(index), width: width, height: 16)).fill()
+        }
+        image.unlockFocus()
+        return try XCTUnwrap(image.foodBuddyJPEGData(compressionQuality: 0.95))
+        #endif
     }
 }
 
@@ -291,6 +387,16 @@ private struct StaticAPIKeyStore: MistralAPIKeyStoring {
     }
 
     func setAPIKey(_ key: String?) throws {}
+}
+
+private struct StaticAISettingsStore: MistralAISettingsStoring {
+    let storedSettings: MistralAISettings
+
+    func settings() -> MistralAISettings {
+        storedSettings
+    }
+
+    func setSettings(_ settings: MistralAISettings) {}
 }
 
 /// Simple mock that captures request parameters and returns canned responses.
@@ -307,10 +413,10 @@ private final class MockHTTPTransport: MistralHTTPTransport, @unchecked Sendable
     }
 
     private(set) var requests: [CapturedRequest] = []
-    var handler: () -> (statusCode: Int, body: String)
+    var handler: () -> (statusCode: Int, headers: [String: String], body: String)
 
-    init(statusCode: Int = 200, body: String = "") {
-        self.handler = { (statusCode, body) }
+    init(statusCode: Int = 200, headers: [String: String] = [:], body: String = "") {
+        self.handler = { (statusCode, headers, body) }
     }
 
     func streamingPOST(
@@ -318,9 +424,9 @@ private final class MockHTTPTransport: MistralHTTPTransport, @unchecked Sendable
         headers: [(name: String, value: String)],
         body: Data,
         timeoutSeconds: TimeInterval
-    ) async throws -> (statusCode: Int, bodyLines: AsyncThrowingStream<String, Error>) {
+    ) async throws -> MistralStreamingResponse {
         requests.append(CapturedRequest(url: url, headers: headers, body: body))
-        let (statusCode, responseBody) = handler()
+        let (statusCode, responseHeaders, responseBody) = handler()
         let lines = responseBody.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         let stream = AsyncThrowingStream<String, Error> { continuation in
             for line in lines {
@@ -328,6 +434,10 @@ private final class MockHTTPTransport: MistralHTTPTransport, @unchecked Sendable
             }
             continuation.finish()
         }
-        return (statusCode, stream)
+        return MistralStreamingResponse(
+            statusCode: statusCode,
+            headers: responseHeaders,
+            bodyLines: stream
+        )
     }
 }

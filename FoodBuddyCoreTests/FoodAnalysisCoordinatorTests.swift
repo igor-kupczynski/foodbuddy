@@ -32,6 +32,7 @@ final class FoodAnalysisCoordinatorTests: XCTestCase {
         XCTAssertEqual(meal.aiAnalysisStatus, .completed)
         XCTAssertEqual(meal.aiDescription, "Pasta with tomato sauce")
         XCTAssertNil(meal.aiAnalysisErrorDetails)
+        XCTAssertNil(meal.aiAnalysisNextRetryAt)
         XCTAssertEqual(meal.foodItems.count, 2)
         XCTAssertEqual(Set(meal.foodItems.map(\.category)), [.wholeGrains, .vegetables])
 
@@ -152,9 +153,69 @@ final class FoodAnalysisCoordinatorTests: XCTestCase {
         XCTAssertEqual(meal.aiAnalysisStatus, .failed)
         XCTAssertNil(meal.aiDescription)
         XCTAssertNotNil(meal.aiAnalysisErrorDetails)
+        XCTAssertNil(meal.aiAnalysisNextRetryAt)
         XCTAssertTrue(meal.aiAnalysisErrorDetails?.contains("Network error") == true)
         let callCount = await recognitionSpy.recordedCallCount()
         XCTAssertEqual(callCount, 1)
+    }
+
+    func testCoordinatorRateLimitRequeuesMealAndPersistsTelemetry() async throws {
+        let harness = try AnalysisHarness.make()
+        defer { harness.cleanup() }
+
+        let meal = try harness.makePendingMeal()
+        let retryAt = Date().addingTimeInterval(600)
+        let recognitionSpy = FoodRecognitionSpy(
+            behavior: .failure(
+                .rateLimited(
+                    FoodRecognitionRateLimitTelemetry(
+                        statusCode: 429,
+                        responseBody: #"{"error":"rate limited"}"#,
+                        responseTelemetry: HTTPResponseTelemetry(
+                            headers: [
+                                "retry-after": "120",
+                                "x-ratelimit-remaining": "0",
+                                "cf-ray": "abc123",
+                            ]
+                        ),
+                        requestImageCount: 2,
+                        requestImageBytes: [2_048, 2_048],
+                        requestBodyBytes: 4_096,
+                        model: "mistral-large-latest",
+                        imageLongEdge: 1024,
+                        imageQuality: 75,
+                        attemptCount: 4,
+                        maxAttempts: 4,
+                        appliedRetryDelayMs: [2_000, 4_000, 8_000],
+                        retryAfterRawValue: "120",
+                        nextEligibleRetryAt: retryAt
+                    )
+                )
+            )
+        )
+        let coordinator = FoodAnalysisCoordinator(
+            modelStore: FoodAnalysisModelStore(modelContext: harness.modelContext),
+            imageStore: harness.imageStore,
+            foodRecognitionService: recognitionSpy,
+            apiKeyStore: StaticCoordinatorAPIKeyStore(key: "configured")
+        )
+
+        await coordinator.processPendingMeals()
+
+        XCTAssertEqual(meal.aiAnalysisStatus, .pending)
+        XCTAssertEqual(meal.aiAnalysisNextRetryAt, retryAt)
+        XCTAssertNotNil(meal.aiAnalysisErrorDetails)
+        XCTAssertTrue(meal.aiAnalysisErrorDetails?.contains("HTTP Status: 429") == true)
+        XCTAssertTrue(meal.aiAnalysisErrorDetails?.contains("Retry-After: 120") == true)
+        XCTAssertTrue(meal.aiAnalysisErrorDetails?.contains("Request Body Bytes: 4096") == true)
+
+        let firstCallCount = await recognitionSpy.recordedCallCount()
+        XCTAssertEqual(firstCallCount, 1)
+
+        await coordinator.processPendingMeals()
+
+        let secondCallCount = await recognitionSpy.recordedCallCount()
+        XCTAssertEqual(secondCallCount, 1)
     }
 
     func testCoordinatorSkipsWhenNoAPIKeyConfigured() async throws {

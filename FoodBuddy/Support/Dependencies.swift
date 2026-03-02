@@ -41,8 +41,13 @@ enum Dependencies {
         KeychainMistralAPIKeyStore(service: mistralKeychainServiceName)
     }
 
+    static func makeMistralAISettingsStore() -> any MistralAISettingsStoring {
+        UserDefaultsMistralAISettingsStore()
+    }
+
     static func makeFoodRecognitionService(
-        apiKeyStore: (any MistralAPIKeyStoring)? = nil
+        apiKeyStore: (any MistralAPIKeyStoring)? = nil,
+        aiSettingsStore: (any MistralAISettingsStoring)? = nil
     ) -> any FoodRecognitionService {
         if AppRuntimeFlags.useMockFoodRecognition {
             return MockFoodRecognitionService(
@@ -56,16 +61,24 @@ enum Dependencies {
         }
 
         let resolvedAPIKeyStore = apiKeyStore ?? makeMistralAPIKeyStore()
-        return MistralFoodRecognitionService(apiKeyStore: resolvedAPIKeyStore)
+        let resolvedAISettingsStore = aiSettingsStore ?? makeMistralAISettingsStore()
+        return MistralFoodRecognitionService(
+            apiKeyStore: resolvedAPIKeyStore,
+            aiSettingsStore: resolvedAISettingsStore
+        )
     }
 
     @MainActor
     static func makeFoodAnalysisCoordinator(modelContext: ModelContext) -> FoodAnalysisCoordinator {
         let keyStore = makeMistralAPIKeyStore()
+        let aiSettingsStore = makeMistralAISettingsStore()
         return FoodAnalysisCoordinator(
             modelStore: FoodAnalysisModelStore(modelContext: modelContext),
             imageStore: makeImageStore(),
-            foodRecognitionService: makeFoodRecognitionService(apiKeyStore: keyStore),
+            foodRecognitionService: makeFoodRecognitionService(
+                apiKeyStore: keyStore,
+                aiSettingsStore: aiSettingsStore
+            ),
             apiKeyStore: keyStore
         )
     }

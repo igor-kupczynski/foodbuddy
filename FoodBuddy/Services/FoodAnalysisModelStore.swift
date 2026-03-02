@@ -10,20 +10,30 @@ struct PendingMealAnalysis: Sendable {
 @MainActor
 final class FoodAnalysisModelStore {
     private let modelContext: ModelContext
+    private let nowProvider: () -> Date
 
-    init(modelContext: ModelContext) {
+    init(
+        modelContext: ModelContext,
+        nowProvider: @escaping () -> Date = Date.init
+    ) {
         self.modelContext = modelContext
+        self.nowProvider = nowProvider
     }
 
     func claimNextPendingMeal() throws -> PendingMealAnalysis? {
         let pendingRawValue = AIAnalysisStatus.pending.rawValue
-        var descriptor = FetchDescriptor<Meal>(
+        let now = nowProvider()
+        let descriptor = FetchDescriptor<Meal>(
             predicate: #Predicate { $0.aiAnalysisStatusRawValue == pendingRawValue },
             sortBy: [SortDescriptor(\Meal.updatedAt)]
         )
-        descriptor.fetchLimit = 1
 
-        guard let meal = try modelContext.fetch(descriptor).first else {
+        guard let meal = try modelContext.fetch(descriptor).first(where: { meal in
+            guard let nextRetryAt = meal.aiAnalysisNextRetryAt else {
+                return true
+            }
+            return nextRetryAt <= now
+        }) else {
             return nil
         }
 
@@ -34,6 +44,7 @@ final class FoodAnalysisModelStore {
 
         meal.aiAnalysisStatus = .analyzing
         meal.aiAnalysisErrorDetails = nil
+        meal.aiAnalysisNextRetryAt = nil
         try save()
 
         let filenames = meal.entries
@@ -92,8 +103,21 @@ final class FoodAnalysisModelStore {
 
         meal.aiDescription = description
         meal.aiAnalysisErrorDetails = nil
+        meal.aiAnalysisNextRetryAt = nil
         meal.aiAnalysisStatus = .completed
         meal.updatedAt = now
+        try save()
+    }
+
+    func markPendingRetry(mealID: UUID, errorDetails: String?, nextRetryAt: Date) throws {
+        guard let meal = try fetchMeal(id: mealID) else {
+            return
+        }
+
+        meal.aiAnalysisStatus = .pending
+        meal.aiAnalysisErrorDetails = errorDetails
+        meal.aiAnalysisNextRetryAt = nextRetryAt
+        meal.updatedAt = nowProvider()
         try save()
     }
 
@@ -104,7 +128,8 @@ final class FoodAnalysisModelStore {
 
         meal.aiAnalysisStatus = .failed
         meal.aiAnalysisErrorDetails = errorDetails
-        meal.updatedAt = .now
+        meal.aiAnalysisNextRetryAt = nil
+        meal.updatedAt = nowProvider()
         try save()
     }
 

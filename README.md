@@ -9,7 +9,7 @@ FoodBuddy is an iOS meal logger with meal-first history, editable meal timestamp
 FoodBuddy is currently focused on:
 
 - Meal-first logging with multi-photo capture (`1..8` photos), note-only meals, and meal-type organization.
-- AI-assisted meal analysis (Mistral) with user notes, background processing, and retry flow.
+- AI-assisted meal analysis (Mistral) with user notes, background processing, rate-limit-aware retry telemetry, and configurable AI-only image payload sizing.
 - Diet Quality Score (DQS) tracking with AI food categorization, in-app category/portion guidance, and manual add/edit/delete of food items.
 - SwiftData persistence with CloudKit private-database sync behavior and local fallback.
 - iPhone and iPad adaptive UI, with automated unit/UI regression coverage.
@@ -193,6 +193,8 @@ Suggested manual iPhone smoke checks:
 5. Add/edit/delete one manual food item and verify daily score updates each time.
 6. Swipe-delete one food item from Daily DQS or Meal Detail and verify score updates.
 7. If API key is configured in **AI Settings**, run note-only re-analysis and verify AI description + food items update.
+8. If a photo-backed AI analysis hits rate limiting, confirm the meal stays pending with a visible next-retry time and **Show details** exposes request/retry telemetry.
+9. In **AI Settings**, adjust AI image `Long edge` / `Quality` and confirm future photo-backed analyses use the new payload settings without changing local photo storage behavior.
 
 Optional CloudKit-enabled phone run:
 

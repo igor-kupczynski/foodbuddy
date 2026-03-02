@@ -118,6 +118,13 @@ struct MealDetailView: View {
         })
     }
 
+    private var analysisProgressMessage: String {
+        if let nextRetryAt = meal.aiAnalysisNextRetryAt, nextRetryAt > .now {
+            return "Waiting to retry after rate limit until \(nextRetryAt.formatted(date: .abbreviated, time: .shortened))."
+        }
+        return "Analyzing..."
+    }
+
     @ViewBuilder
     private var aiDescriptionSection: some View {
         Section("AI Description") {
@@ -125,10 +132,18 @@ struct MealDetailView: View {
                 Text("Set up AI in Settings to get meal descriptions.")
                     .foregroundStyle(.secondary)
             } else if meal.aiAnalysisStatus == .pending || meal.aiAnalysisStatus == .analyzing {
-                HStack(spacing: 10) {
-                    ProgressView()
-                    Text("Analyzing...")
-                        .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                        Text(analysisProgressMessage)
+                            .foregroundStyle(.secondary)
+                    }
+                    if meal.aiAnalysisErrorDetails != nil {
+                        Button("Show details") {
+                            isShowingFailureDetails = true
+                        }
+                        .font(.footnote)
+                    }
                 }
             } else if meal.aiAnalysisStatus == .completed {
                 if let description = meal.aiDescription?.trimmingCharacters(in: .whitespacesAndNewlines),
