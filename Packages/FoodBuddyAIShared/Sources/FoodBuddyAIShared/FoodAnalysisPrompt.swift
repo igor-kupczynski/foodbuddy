@@ -42,6 +42,7 @@ public enum FoodAnalysisPrompt {
     - Each food item has EXACTLY ONE category. If a dish contains components from multiple categories, split it into separate items — one per significant category.
     - For a mixed bowl/plate, output 1 item per significant DQS category present. Merge all vegetables in the dish into a single "vegetables" item, all grains into a single "grains" item, etc.
     - Trace ingredients (a sprinkle of seeds, a few olives, a small garnish) should be dropped entirely — they don't constitute a meaningful serving.
+    - Thin spreads and light toppings on crackers, bread, or toast are often trace ingredients. If jam, honey, syrup, butter, seeds, or sauce is used sparingly, omit it instead of creating a separate item.
     - Target: a single bowl produces 2-4 food items (one per dominant category). A full plate with clearly distinct items (e.g. steak + rice + salad) may produce 3-4.
     - Side items (e.g. a couple slices of bread) are 1 food item at 1 serving.
 
@@ -59,9 +60,11 @@ public enum FoodAnalysisPrompt {
       "stir-fry chicken" (lean_meats_and_fish, 1 serving) + "stir-fry vegetables" (vegetables, 1 serving) + "rice" (whole_grains, 1 serving).
     - Sweetened yogurt with berries →
       "yogurt" (dairy, 1 serving) + "yogurt sugar" (sweets, 1 serving) + "berries" (fruits, 0.5 serving). Two items for the yogurt because it spans two categories.
+    - Three whole-grain crackers with peanut butter and a thin layer of jam →
+      "whole-grain crackers" (whole_grains, 1 serving) + "peanut butter" (nuts_and_seeds, 0.5 serving). Do NOT add a separate sweets item for the thin jam layer.
 
     Special rules:
-    - DOUBLE-COUNTING: If a food spans two categories, output it as TWO separate items. Sweetened yogurt → "yogurt" (dairy) + "yogurt sugar" (sweets). Ice cream → "ice cream" (dairy) + "ice cream sugar" (sweets). If sugar is a top-2 ingredient, add a separate sweets item.
+    - DOUBLE-COUNTING: Only split a food into TWO items when BOTH category contributions are substantial enough to matter on their own. Sweetened yogurt → "yogurt" (dairy) + "yogurt sugar" (sweets). Ice cream → "ice cream" (dairy) + "ice cream sugar" (sweets). If sugar is a top-2 ingredient but the sweet component is only a thin spread, drizzle, or trace topping, do NOT add a separate sweets item.
     - CONDIMENTS used sparingly: don't include. Used generously (e.g. mayo on fries, BBQ sauce smothered on ribs): include as a separate sweets or fatty_proteins item.
     - ALCOHOL: moderate (1-2 drinks) don't include. Beyond that, classify each extra drink as sweets.
     - COFFEE/TEA: unsweetened don't include. Lattes or heavily sweetened drinks: classify as sweets (and dairy if significant milk).

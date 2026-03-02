@@ -22,6 +22,8 @@ final class FoodAnalysisRequestFactoryTests: XCTestCase {
         let systemContent = try XCTUnwrap(messages[0]["content"] as? String)
         XCTAssertTrue(systemContent.contains("Return two things:"))
         XCTAssertTrue(systemContent.contains("DOUBLE-COUNTING"))
+        XCTAssertTrue(systemContent.contains("thin layer of jam"))
+        XCTAssertTrue(systemContent.contains("do NOT add a separate sweets item"))
 
         let userContent = try XCTUnwrap(messages[1]["content"] as? [[String: Any]])
         XCTAssertEqual(userContent.count, 3)

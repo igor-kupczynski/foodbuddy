@@ -1,0 +1,15 @@
+{
+  "id": "case-003-note-only-small-breakfast-serving-discipline",
+  "model": "mistral-large-latest",
+  "notes": "Breakfast: 3 dark spelt whole-grain crackers with peanut butter and a little orange jam (70% fruit). This is a small breakfast, so do not overcount the portions.",
+  "images": [],
+  "expected": {
+    "pass_threshold": 85,
+    "meal_context": "A small breakfast: three dark spelt whole-grain crackers topped with peanut butter and a little orange jam. The important serving judgment is restraint: the crackers should count as about 1 serving of whole grains, the peanut butter should stay at 0.5 serving or at most 1.0, and the thin jam layer is minor and may be omitted instead of split into a separate sweets item.",
+    "description_hints": ["crackers", "peanut butter", "small breakfast"],
+    "food_items": [
+      {"name": "spelt whole-grain crackers", "category": "whole_grains", "servings": 1.0},
+      {"name": "peanut butter", "category": "nuts_and_seeds", "servings": 0.5}
+    ]
+  }
+}
